@@ -1,0 +1,70 @@
+services:
+  control-center:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: ["python", "app/control_center/main.py"]
+    ports:
+      - "8080:8080"
+    volumes:
+      - .:/app
+
+  dashboard:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: ["python", "app/dashboard/main.py"]
+    ports:
+      - "8081:8080"           # Dashboard communicates with the control-center
+    volumes:
+      - .:/app
+
+# Vehicles and sensors do not expose their ports to the host, as communication
+# occurs internally between containers via service name and not between hosts.
+  vehicle-drone:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: ["python", "app/vehicles/drone.py"]
+    volumes:
+      - .:/app
+
+  vehicle-rover:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: ["python", "app/vehicles/rover.py"]
+    volumes:
+      - .:/app
+
+  vehicle-boat:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: ["python", "app/vehicles/boat.py"]
+    volumes:
+      - .:/app
+
+  camera:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: ["python", "app/sensors/camera.py"]
+    volumes:
+      - .:/app
+
+  sensor-water:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: ["python", "app/sensors/water.py"]
+    volumes:
+      - .:/app
+
+  sensor-vibration:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: ["python", "app/sensors/vibration.py"]
+    volumes:
+      - .:/app
