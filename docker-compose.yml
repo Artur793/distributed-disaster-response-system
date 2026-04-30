@@ -26,6 +26,8 @@ services:
       context: .
       dockerfile: Dockerfile
     command: ["python", "app/vehicles/drone.py"]
+    depends_on:
+      - control-center
     volumes:
       - .:/app
 
@@ -50,6 +52,8 @@ services:
       context: .
       dockerfile: Dockerfile
     command: ["python", "app/sensors/camera.py"]
+    depends_on:
+      - control-center
     volumes:
       - .:/app
 
