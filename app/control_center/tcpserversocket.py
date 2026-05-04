@@ -1,9 +1,9 @@
-import socket 
-import select 
-from parsing import parsingrequest
-from parsing import recv_full_request
+import socket
+import select
 
-def startsocket():
+from app.control_center.parsing import parsing_request, recv_full_request
+
+def startsocket(state):
     ip_address = "0.0.0.0" # ip address for our socket so that clients can find it 
     port = 8080 
 
@@ -42,18 +42,15 @@ def startsocket():
                         continue
 
                     # parse request
-                    response = parsingrequest(headers_text, body_text)
+                    response = parsing_request(headers_text, body_text, state)
 
                     print(headers_text)
 
-                    sock.sendall(response.encode())
+                    sock.sendall(response)
 
                 except ConnectionResetError:
                     sockets.remove(sock)
                     buffers.pop(sock, None)
                     sock.close()
 
-                
-
-
-        
+                    
