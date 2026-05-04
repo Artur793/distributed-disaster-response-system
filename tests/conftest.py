@@ -3,6 +3,7 @@ import subprocess
 import sys
 import time
 
+import uuid
 import pytest
 
 
@@ -42,3 +43,10 @@ def control_center_server():
         except subprocess.TimeoutExpired:
             process.kill()
             process.wait(timeout=5)
+
+
+@pytest.fixture
+def unique_id():
+    def _make(prefix: str) -> str:
+        return f"{prefix}-{uuid.uuid4().hex[:8]}"
+    return _make
