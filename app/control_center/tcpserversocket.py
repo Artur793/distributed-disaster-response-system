@@ -1,6 +1,6 @@
 import socket 
 import select 
-from parsing import parcingrequest
+from parsing import parsingrequest
 from parsing import recv_full_request
 
 def startsocket():
@@ -42,7 +42,7 @@ def startsocket():
                         continue
 
                     # parse request
-                    response = parcingrequest(headers_text, body_text)
+                    response = parsingrequest(headers_text, body_text)
 
                     print(headers_text)
 

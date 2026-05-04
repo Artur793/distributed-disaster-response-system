@@ -31,7 +31,7 @@ def recv_full_request(sock, buffer):  # prototype ##### , had to be done with so
     return headers_text, body_text, remaining
 
 
-def parcingrequest(headers_text , body_text):
+def parsingrequest(headers_text, body_text):
 
     request_line = headers_text.split("\r\n")[0]
     method, path, _ = request_line.split()  # separating method and path from the request header
