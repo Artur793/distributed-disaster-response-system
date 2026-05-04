@@ -1,34 +1,29 @@
 import socket
-import time
+import json
+
 s = socket.socket()
 s.connect(("control-center", 8080))
 
-xml_body = """<?xml version="1.0" encoding="UTF-8"?>
-<vehicle>
-    <name>Scout-Alpha</name>
-    <type>drone</type>
-    <location>
-        <x>5</x>
-        <y>12</y>
-    </location>
-</vehicle>
-"""
+payload = {
+    "id": "drone-1",
+    "unit": "vehicle",
+    "vehicle_type": "drone",
+    "position": {
+        "x": 5,
+        "y": 12
+    }
+}
+
+body = json.dumps(payload)
 
 request = (
-    "POST /vehicles HTTP/1.1\r\n"
+    "POST /unit HTTP/1.1\r\n"
     "Host: control-center\r\n"
-    "Content-Type: application/xml\r\n"
-    f"Content-Length: {len(xml_body.encode())}\r\n"
+    "Content-Type: application/json\r\n"
+    f"Content-Length: {len(body.encode())}\r\n"
     "\r\n"
-    + xml_body
+    + body
 )
-request1 = (
-    "GET /map HTTP/1.1\r\n"
-    "Host: control-center\r\n"
-    "\r\n"
-)
-s.send(request1.encode())
-print(s.recv(4096).decode())
+
 s.send(request.encode())
 print(s.recv(4096).decode())
-

@@ -1,3 +1,6 @@
+from app.control_center.routes import handle_request
+
+
 def recv_full_request(sock, buffer):  # prototype ##### , had to be done with some better way
     
     chunk = sock.recv(4096)   # one time because , one request at a time
@@ -31,39 +34,50 @@ def recv_full_request(sock, buffer):  # prototype ##### , had to be done with so
     return headers_text, body_text, remaining
 
 
-def parcingrequest(headers_text , body_text):
+def parse_headers(headers_text: str) -> dict[str, str]:
+    lines = headers_text.split("\r\n")[1:]
+    headers = {}
+
+    for line in lines:
+        if ":" in line:
+            key, value = line.split(":", 1)
+            headers[key.strip().lower()] = value.strip()
+
+    return headers
+
+
+def reason_phrase(status_code: int) -> str:
+    reasons = {
+        200: "OK",
+        201: "Created",
+        400: "Bad Request",
+        404: "Not Found",
+        405: "Method Not Allowed",
+        409: "Conflict",
+        500: "Internal Server Error",
+    }
+    return reasons.get(status_code, "OK")
+
+
+def parsing_request(headers_text: str, body_text: str, state) -> bytes:
 
     request_line = headers_text.split("\r\n")[0]
-    method, path, _ = request_line.split()  # separating method and path from the request header
+    method, path, _ = request_line.split()  # Parse request line
 
-    if method == "POST" and path == "/vehicles":
-        status = "201 Created"
-        response_body = "Vehicle registered\n" + body_text
+    headers = parse_headers(headers_text) # Parse headers into dict
 
-    elif method == "POST" and path == "/sensors":
-        status = "200 OK"
-        response_body = "Sensor data stored\n" + body_text
+    status_code, response_headers, response_body = handle_request(method, path, headers, body_text, state) # Router call
 
-    elif method == "GET" and path == "/map":
-        status = "200 OK"
-        response_body = "Here is the map"
+    # Structure full raw HTTP response
+    body_bytes = response_body.encode("utf-8")
+    reason = reason_phrase(status_code)
 
-    elif method == "GET" and path == "/status":
-        status = "200 OK"
-        response_body = "ALL GOOD"
+    response = f"HTTP/1.1 {status_code} {reason}\r\n"
 
-    else:
-        return (
-            "HTTP/1.1 404 Not Found\r\n"
-            "Content-Length: 9\r\n\r\n"
-            "Not Found"
-        )
+    for key, value in response_headers.items():
+        response += f"{key}: {value}\r\n"
 
-    response = (
-        f"HTTP/1.1 {status}\r\n"
-        "Content-Type: text/plain\r\n"
-        f"Content-Length: {len(response_body)}\r\n"
-        "\r\n"
-        f"{response_body}"
-        )
-    return response 
+    response += f"Content-Length: {len(body_bytes)}\r\n"    # Use body_bytes to avoid problems with non-ASCII characters
+    response += "\r\n"
+
+    return response.encode("utf-8") + body_bytes
