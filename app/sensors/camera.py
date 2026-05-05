@@ -43,7 +43,7 @@ while True:
 
         incident_payload = {
             "id": f"camera-1-incident-{incident_counter}",
-            "incident_type": "person detected",
+            "incident_type": "person_detected",
             "source_id": "camera-1",
             "message": f"Person Detected with High-Probability: {person_confidence}",
             "position": {
