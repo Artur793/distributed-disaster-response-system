@@ -54,8 +54,50 @@ def render_map_html(island_map) -> str:
 
     html += """
         </div>
+
+        <h3>Legend</h3>
+
+        <div style="display: flex; gap: 15px; margin-top: 15px; flex-wrap: wrap;">
+
+            <div style="display: flex; align-items: center; gap: 5px;">
+                <div class="cell land"></div>
+                <span>Land</span>
+            </div>
+
+            <div style="display: flex; align-items: center; gap: 5px;">
+                <div class="cell water"></div>
+                <span>Water</span>
+            </div>
+
+            <div style="display: flex; align-items: center; gap: 5px;">
+                <div class="cell harbor"></div>
+                <span>Harbor</span>
+            </div>
+
+            <div style="display: flex; align-items: center; gap: 5px;">
+                <div class="cell depot"></div>
+                <span>Depot</span>
+            </div>
+
+            <div style="display: flex; align-items: center; gap: 5px;">
+                <div class="cell charging_station"></div>
+                <span>Charging Station</span>
+            </div>
+
+            <div style="display: flex; align-items: center; gap: 5px;">
+                <div class="cell landing_field"></div>
+                <span>Landing Field</span>
+            </div>
+
+            <div style="display: flex; align-items: center; gap: 5px;">
+                <div class="cell bridge"></div>
+                <span>Bridge</span>
+            </div>
+
+        </div>
+
     </body>
     </html>
-    """
+"""
 
     return html
