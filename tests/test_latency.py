@@ -1,6 +1,7 @@
 import socket
 import time
 import json
+import threading
 
 HOST = "127.0.0.1"
 PORT = 8080
@@ -139,3 +140,34 @@ def test_average_post_incident_latency():
     print(f"POST_INCIDENT_AVERAGE_LATENCY: {average:.2f} ms")
 
     assert average < 100
+
+
+def test_concurrent_request_latency():    # for fifty concurrent requests 
+    results = []
+    
+    def worker():
+        start = time.perf_counter()
+        send_get_status_request()
+        end = time.perf_counter()
+        results.append((end - start) * 1000)
+    
+    threads = [threading.Thread(target=worker) for _ in range(10)]
+    
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join()
+    
+    print(f"CONCURRENT_AVG_LATENCY: {sum(results)/len(results):.2f} ms")
+    print(f"CONCURRENT_MAX_LATENCY: {max(results):.2f} ms")
+
+def test_burst_latency():         # for fast 50 requests 
+    latencies = []
+    for _ in range(50):
+        start = time.perf_counter()
+        send_get_status_request()
+        latencies.append((time.perf_counter() - start) * 1000)
+    
+    print(f"BURST_P50: {sorted(latencies)[25]:.2f} ms")
+    print(f"BURST_P99: {sorted(latencies)[49]:.2f} ms")
+
