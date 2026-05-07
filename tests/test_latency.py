@@ -168,6 +168,6 @@ def test_burst_latency():         # for fast 50 requests
         send_get_status_request()
         latencies.append((time.perf_counter() - start) * 1000)
     
-    print(f"BURST_P50: {sorted(latencies)[25]:.2f} ms")
-    print(f"BURST_P99: {sorted(latencies)[49]:.2f} ms")
+    print(f"Die Hälfte der requests: {sorted(latencies)[25]:.2f} ms")
+    print(f"99% der requests: {sorted(latencies)[49]:.2f} ms")
 
