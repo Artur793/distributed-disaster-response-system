@@ -1,0 +1,92 @@
+============================= test session starts ==============================
+platform darwin -- Python 3.14.4, pytest-9.0.3, pluggy-1.6.0 -- /Users/omvitthani/Desktop/VS/DoY5BlockTeamF/.venv/bin/python3.14
+cachedir: .pytest_cache
+metadata: {'Python': '3.14.4', 'Platform': 'macOS-26.3.1-arm64-arm-64bit-Mach-O', 'Packages': {'pytest': '9.0.3', 'pluggy': '1.6.0'}, 'Plugins': {'metadata': '3.1.1', 'html': '4.2.0'}}
+rootdir: /Users/omvitthani/Desktop/VS/DoY5BlockTeamF
+plugins: metadata-3.1.1, html-4.2.0
+collecting ... collected 19 items
+
+
+############################
+Tests For Incident
+
+Aufgabe / Meilenstein: Incident-Management
+Testtyp: Funktional
+
+Prüft, ob ein Incident mit einer bekannten Quelle erfolgreich erstellt wird.
+Prüft, ob ein Incident mit einer unbekannten Quelle abgelehnt wird.
+Prüft, ob doppelte Incident-IDs nicht erlaubt sind.
+
+tests/test_incident_api.py::test_create_incident_with_known_source_returns_201 PASSED
+tests/test_incident_api.py::test_create_incident_with_unknown_source_returns_400 PASSED
+tests/test_incident_api.py::test_duplicate_incident_returns_409 PASSED
+############################
+
+############################
+Tests For Latency
+
+Aufgabe / Meilenstein: Performance und Systembelastung
+Testtyp: Nicht-funktional
+
+Prüft, ob /status schnell genug antwortet.
+Prüft, ob die durchschnittliche Antwortzeit von /status schnell genug bleibt.
+Prüft, ob /incident schnell genug verarbeitet wird.
+Prüft, ob die durchschnittliche Antwortzeit von /incident niedrig bleibt.
+Prüft, ob mehrere gleichzeitige Requests verarbeitet werden können.
+Prüft, ob viele schnelle Requests hintereinander stabil verarbeitet werden.
+
+tests/test_latency.py::test_get_status_latency GET_STATUS_LATENCY: 0.22 ms
+PASSED
+tests/test_latency.py::test_average_get_status_latency GET_STATUS_AVERAGE_LATENCY: 0.17 ms
+PASSED
+tests/test_latency.py::test_post_incident_latency b'HTTP/1.1 400 Bad Request\r\nContent-Type: text/plain\r\nContent-Length: 17\r\n\r\nUnknown source_id'
+POST_INCIDENT_LATENCY: 0.18 ms
+PASSED
+tests/test_latency.py::test_average_post_incident_latency POST_INCIDENT_AVERAGE_LATENCY: 0.18 ms
+PASSED
+tests/test_latency.py::test_concurrent_request_latency CONCURRENT_AVG_LATENCY: 0.59 ms
+CONCURRENT_MAX_LATENCY: 0.72 ms
+PASSED
+tests/test_latency.py::test_burst_latency Die Hälfte der requests: 0.25 ms
+99% der requests: 0.28 ms
+PASSED
+############################
+############################
+Tests For status
+
+Aufgabe / Meilenstein: Systemstatus und Monitoring
+Testtyp: Funktional
+
+Prüft, ob /status die erwarteten Daten zurückgibt.
+Prüft, ob der Kartenstatus korrekt zurückgegeben wird.
+Prüft, ob POST auf /status nicht erlaubt ist.
+Prüft, ob unbekannte Routen mit Fehler 404 beantwortet werden.
+
+tests/test_status_api.py::test_get_status_returns_200_and_json PASSED
+tests/test_status_api.py::test_get_map_returns_expected_status PASSED
+tests/test_status_api.py::test_post_status_not_allowed PASSED
+tests/test_status_api.py::test_unknown_route_returns_404 PASSED
+############################
+
+############################
+Tests For Unit
+
+Aufgabe / Meilenstein: Verwaltung und Registrierung von Einheiten
+Testtyp: Funktional
+
+Prüft, ob ein Fahrzeug erfolgreich registriert wird.
+Prüft, ob ein Sensor erfolgreich registriert wird.
+Prüft, ob doppelte Fahrzeugregistrierungen verhindert werden.
+Prüft, ob ungültiges JSON abgelehnt wird.
+Prüft, ob fehlende Pflichtfelder erkannt werden.
+Prüft, ob ungültige Einheitstypen abgelehnt werden.
+
+tests/test_unit_api.py::test_register_vehicle_returns_201 PASSED
+tests/test_unit_api.py::test_register_sensor_returns_201 PASSED
+tests/test_unit_api.py::test_duplicate_vehicle_registration_returns_409 PASSED
+tests/test_unit_api.py::test_invalid_json_returns_400 PASSED
+tests/test_unit_api.py::test_missing_vehicle_type_returns_400 PASSED
+tests/test_unit_api.py::test_invalid_unit_type_returns_400 PASSED
+############################
+
+============================== 19 passed in 0.33s ==============================

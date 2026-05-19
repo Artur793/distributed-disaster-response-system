@@ -1,10 +1,16 @@
 import json
 
 from app.common.models import Vehicle, Sensor, Incident, VehicleType, SensorType, IncidentType, Position
-
+from app.common.maphtml import render_map_html
+from app.common.statueshtml import render_status_html
+from app.common.dashboardhtml import render_dashboard_html
 
 def handle_get_status(state):
     return 200, {"Content-Type": "application/json"}, json.dumps(state.get_status())
+
+    # it is already rendering on dashboard . we keep this json for the TEST
+    #html = render_status_html(state.get_status())
+    #return 200, {"Content-Type": "text/html"}, html
 
 
 def handle_get_map(state):
@@ -12,7 +18,20 @@ def handle_get_map(state):
     if map_data is None:
         return 404, {"Content-Type": "text/plain"}, "Map not initialized"
 
-    return 200, {"Content-Type": "application/json"}, json.dumps(map_data)
+    #return 200, {"Content-Type": "application/json"}, json.dumps(map_data)
+    html = render_map_html(state.get_map())
+
+    return 200, {"Content-Type": "text/html"}, html
+
+def handle_get_dashboard(state):
+    # currently only map
+    map_data = state.get_map_dict()
+    if map_data is None:
+        return 404, {"Content-Type": "text/plain"}, "Dashboard not initialized"
+
+    html = render_dashboard_html(state)
+
+    return 200, {"Content-Type": "text/html"}, html
 
 
 def handle_post_unit(body: str, state):

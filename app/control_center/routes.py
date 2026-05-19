@@ -3,6 +3,7 @@ from app.control_center.handlers import (
     handle_get_map,
     handle_post_unit,
     handle_post_incident,
+    handle_get_dashboard,
 )
 
 # Decides which handler to call based on method + path
@@ -26,5 +27,10 @@ def handle_request(method: str, path: str, headers: dict[str, str], body: str, s
         if method != "POST":
             return 405, {"Content-Type": "text/plain"}, "Method Not Allowed"
         return handle_post_incident(body, state)
+    
+    if path == "/dashboard":
+        if method != "GET":
+            return 405, {"Content-Type": "text/plain"}, "Method Not Allowed"
+        return handle_get_dashboard(state)
 
     return 404, {"Content-Type": "text/plain"}, "Not Found"
