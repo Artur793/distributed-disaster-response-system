@@ -11,6 +11,8 @@ def test_register_vehicle_returns_201(unique_id):
         "id": vehicle_id,
         "unit": "vehicle",
         "vehicle_type": "drone",
+        "rpc_host": "vehicle-drone",
+        "rpc_port": 50051,
         "position": {"x": 2, "y": 3},
     }
 
@@ -22,7 +24,9 @@ def test_register_vehicle_returns_201(unique_id):
     assert data["id"] == vehicle_id
     assert data["vehicle_type"] == "drone"
     assert data["position"] == {"x": 2, "y": 3}
-    assert data["status"] == "registered"
+    assert data["rpc_host"] == "vehicle-drone"
+    assert data["rpc_port"] == 50051
+    assert data["status"] == "IDLE"
 
 
 def test_register_sensor_returns_201(unique_id):
@@ -53,6 +57,8 @@ def test_duplicate_vehicle_registration_returns_409(unique_id):
         "id": vehicle_id,
         "unit": "vehicle",
         "vehicle_type": "drone",
+        "rpc_host": "vehicle-drone",
+        "rpc_port": 50051,
         "position": {"x": 6, "y": 7},
     }
 
@@ -86,6 +92,20 @@ def test_missing_vehicle_type_returns_400(unique_id):
 
     assert response.status_code == 400
     assert "vehicle_type" in response.text
+
+
+def test_missing_vehicle_rpc_endpoint_returns_400(unique_id):
+    payload = {
+        "id": unique_id("test-rover-no-rpc"),
+        "unit": "vehicle",
+        "vehicle_type": "rover",
+        "position": {"x": 1, "y": 1},
+    }
+
+    response = requests.post(f"{BASE_URL}/unit", json=payload)
+
+    assert response.status_code == 400
+    assert "rpc_host" in response.text
 
 
 def test_invalid_unit_type_returns_400(unique_id):
