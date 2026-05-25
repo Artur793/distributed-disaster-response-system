@@ -1,0 +1,32 @@
+Mission object:
+
+@dataclass
+class Mission:
+    id: str
+    incident_id: str
+    incident_type: IncidentType
+    target_position: Position | None
+    priority: int
+    assigned_vehicle_id: str | None = None
+    progress: int = 0
+    status: str = "open"
+    result_message: str | None = None
+
+Vehicle RPC methods:
+
+- AssignMission -> MissionAck / MissionRefuse (when BUSY or CHARGING)
+- GetVehicleStatus -> VehicleStatus
+
+Vehicle states:
+
+IDLE
+BUSY
+ASSIGNED
+ERROR
+CHARGING
+
+Role mapping:
+
+person_detected -> water (boat) / land (rover)
+vibration_alert -> rover
+water_level_alert -> drone
