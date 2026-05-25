@@ -30,8 +30,8 @@ class Position:
 class Vehicle:
     id: str     # Better readability in the future (e.g. rover-1 rather than 173621)
     vehicle_type: VehicleType
-    rpc_host: str
-    rpc_port: int
+    rpc_host: str       # Vehicles register their RPC endpoint so the control center does not
+    rpc_port: int       # depend on fixed Docker service names or ports.
     position: Position | None = None
     status: str = "IDLE"
     assigned_mission_id: str | None = None
@@ -79,6 +79,7 @@ class Incident:
 
 @dataclass
 class Mission:
+    # Mission and Incident IDs are the same
     id: str
     incident_id: str
     incident_type: IncidentType
