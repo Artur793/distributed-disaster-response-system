@@ -55,7 +55,7 @@ class DroneVehicle(BaseVehicle):
     def is_compatible(self, request) -> bool:
 
         return (
-            request.incident_type == "person_detected" # only person detection for drone 
+            request.incident_type == "water_level_alert"
         )
 
     
@@ -112,7 +112,7 @@ class DroneVehicle(BaseVehicle):
             self.state = mission_pb2.COMPLETED
 
             self.result_message = (
-                "Person detection mission completed"
+                "Water level alert inspection completed"
             )
 
             print(

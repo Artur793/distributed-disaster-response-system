@@ -56,8 +56,11 @@ class RoverVehicle(BaseVehicle):
     def is_compatible(self, request) -> bool:
 
         return (
-            request.incident_type == "vibration_alert"  # only for vibration alerts an on land 
-            and request.area_type == mission_pb2.LAND
+            request.incident_type == "vibration_alert"
+            or (
+                request.incident_type == "person_detected"
+                and request.area_type == mission_pb2.LAND
+            )
         )
 
     
@@ -113,9 +116,10 @@ class RoverVehicle(BaseVehicle):
 
             self.state = mission_pb2.COMPLETED
 
-            self.result_message = (
-                "Repair mission completed"
-            )
+            if self.current_mission.incident_type == "person_detected":
+                self.result_message = "Land rescue mission completed"
+            else:
+                self.result_message = "Repair mission completed"
 
             print(
                 f"[{self.vehicle_id}] "

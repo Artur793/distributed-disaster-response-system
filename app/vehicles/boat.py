@@ -55,7 +55,8 @@ class BoatVehicle(BaseVehicle):
     def is_compatible(self, request) -> bool:
 
         return (
-            request.area_type == mission_pb2.WATER # only  water alerts for boats 
+            request.incident_type == "person_detected"
+            and request.area_type == mission_pb2.WATER
         )
 
     
@@ -112,7 +113,7 @@ class BoatVehicle(BaseVehicle):
             self.state = mission_pb2.COMPLETED
 
             self.result_message = (
-                "Water mission completed successfully"
+                "Water rescue mission completed"
             )
 
             print(
