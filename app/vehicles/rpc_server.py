@@ -27,6 +27,14 @@ class BaseVehicle(mission_pb2_grpc.VehicleServiceServicer):
             f"{request.mission_id}"
         )
 
+        if self.state != mission_pb2.IDLE:
+            return mission_pb2.MissionAck(
+                mission_id=request.mission_id,
+                vehicle_id=self.vehicle_id,
+                accepted=False,
+                message="Vehicle is not idle",
+            )
+
         if not self.is_compatible(request):
             print("not compatible")
 

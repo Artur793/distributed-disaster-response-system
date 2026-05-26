@@ -174,17 +174,20 @@ def register_vehicle( # register on the control centre with  REST
         + body
     )
 
-    client = socket.socket()
+    while True:
+        client = socket.socket()
 
-    client.connect(("control-center", 8080))
-
-    client.send(request.encode())
-
-    response = client.recv(4096).decode()
-
-    print(response)
-
-    client.close()
+        try:
+            client.connect(("control-center", 8080))
+            client.send(request.encode())
+            response = client.recv(4096).decode()
+            print(response)
+            return
+        except OSError:
+            print(f"[{vehicle_id}] control center unavailable, retrying registration")
+            time.sleep(1)
+        finally:
+            client.close()
 
 
 
