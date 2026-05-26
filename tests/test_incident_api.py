@@ -36,6 +36,12 @@ def test_create_incident_with_known_source_returns_201(unique_id):
     assert data["source_id"] == source_id
     assert data["message"] == "Person near bridge"
 
+    status = requests.get(f"{BASE_URL}/status").json()
+    mission = next(item for item in status["missions"] if item["id"] == incident_id)
+    assert mission["incident_id"] == incident_id
+    assert mission["area_type"] == "LAND"
+    assert mission["status"] == "WAITING_FOR_VEHICLE"
+
 
 def test_create_incident_with_unknown_source_returns_400(unique_id):
     incident_id = unique_id("incident-unknown-source")
@@ -81,3 +87,46 @@ def test_duplicate_incident_returns_409(unique_id):
 
     assert first.status_code == 201
     assert second.status_code == 409
+
+
+def test_create_incident_without_position_returns_400(unique_id):
+    source_id = unique_id("incident-source-position")
+    requests.post(
+        f"{BASE_URL}/unit",
+        json={"id": source_id, "unit": "sensor", "sensor_type": "camera"},
+    )
+
+    response = requests.post(
+        f"{BASE_URL}/incident",
+        json={
+            "id": unique_id("incident-no-position"),
+            "incident_type": "person_detected",
+            "source_id": source_id,
+            "message": "No position supplied",
+        },
+    )
+
+    assert response.status_code == 400
+    assert "position" in response.text.lower()
+
+
+def test_create_incident_outside_map_returns_400(unique_id):
+    source_id = unique_id("incident-source-outside")
+    requests.post(
+        f"{BASE_URL}/unit",
+        json={"id": source_id, "unit": "sensor", "sensor_type": "camera"},
+    )
+
+    response = requests.post(
+        f"{BASE_URL}/incident",
+        json={
+            "id": unique_id("incident-outside"),
+            "incident_type": "person_detected",
+            "source_id": source_id,
+            "message": "Outside map",
+            "position": {"x": 99, "y": 99},
+        },
+    )
+
+    assert response.status_code == 400
+    assert "outside map" in response.text.lower()

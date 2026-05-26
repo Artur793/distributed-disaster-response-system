@@ -53,6 +53,7 @@ def render_status_html(status: dict) -> str:
                 <li>Vehicles: {status["vehicle_count"]}</li>
                 <li>Sensors: {status["sensor_count"]}</li>
                 <li>Incidents: {status["incident_count"]}</li>
+                <li>Missions: {status["mission_count"]}</li>
             </ul>
 
         </div>
@@ -67,6 +68,9 @@ def render_status_html(status: dict) -> str:
                 <th>Type</th>
                 <th>Position</th>
                 <th>Status</th>
+                <th>Mission</th>
+                <th>Progress</th>
+                <th>Result</th>
             </tr>
     """
 
@@ -85,6 +89,9 @@ def render_status_html(status: dict) -> str:
                 <td>{vehicle["vehicle_type"]}</td>
                 <td>{position_text}</td>
                 <td>{vehicle["status"]}</td>
+                <td>{vehicle["assigned_mission_id"] or "N/A"}</td>
+                <td>{vehicle["progress"]}%</td>
+                <td>{vehicle["result_message"] or "N/A"}</td>
             </tr>
         """
 
@@ -146,6 +153,42 @@ def render_status_html(status: dict) -> str:
                 <td>{incident["message"]}</td>
                 <td>{incident["priority"]}</td>
                 <td>{incident["status"]}</td>
+            </tr>
+        """
+
+    html += """
+        </table>
+
+        <h2>Missions</h2>
+
+        <table>
+
+            <tr>
+                <th>ID</th>
+                <th>Incident</th>
+                <th>Type</th>
+                <th>Vehicle</th>
+                <th>Area</th>
+                <th>Priority</th>
+                <th>Status</th>
+                <th>Progress</th>
+                <th>Result</th>
+            </tr>
+    """
+
+    for mission in status["missions"]:
+
+        html += f"""
+            <tr>
+                <td>{mission["id"]}</td>
+                <td>{mission["incident_id"]}</td>
+                <td>{mission["incident_type"]}</td>
+                <td>{mission["assigned_vehicle_id"] or "N/A"}</td>
+                <td>{mission["area_type"]}</td>
+                <td>{mission["priority"]}</td>
+                <td>{mission["status"]}</td>
+                <td>{mission["progress"]}%</td>
+                <td>{mission["result_message"] or "N/A"}</td>
             </tr>
         """
 

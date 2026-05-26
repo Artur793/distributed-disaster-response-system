@@ -14,9 +14,11 @@ def test_get_status_returns_200_and_json():
     assert "vehicle_count" in data
     assert "sensor_count" in data
     assert "incident_count" in data
+    assert "mission_count" in data
     assert "vehicles" in data
     assert "sensors" in data
     assert "incidents" in data
+    assert "missions" in data
 
 
 def test_get_map_returns_expected_status():
