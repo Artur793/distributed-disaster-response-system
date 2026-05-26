@@ -88,6 +88,9 @@ def test_completed_mission_resolves_incident_and_releases_vehicle_on_idle():
     assert state.get_incident("incident-1").status == "resolved"
     assert state.idle_vehicles("rover") == []
 
-    state.update_vehicle_status("rover-1", "IDLE", 100, "Done")
+    state.update_vehicle_status("rover-1", "IDLE", 0, "")
 
     assert [vehicle.id for vehicle in state.idle_vehicles("rover")] == ["rover-1"]
+    mission = state.get_mission("incident-1")
+    assert mission.progress == 100
+    assert mission.result_message == "Done"

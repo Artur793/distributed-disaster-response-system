@@ -145,11 +145,11 @@ class SystemState:
                 return
 
             mission = self.missions[mission_id]
-            mission.progress = progress
-            mission.result_message = result_message or None
 
             if vehicle_status == "COMPLETED":
                 mission.status = "COMPLETED"
+                mission.progress = progress
+                mission.result_message = result_message or None
                 self.incidents[mission.incident_id].status = "resolved"
             elif vehicle_status == "ERROR":
                 # A vehicle error does not fail the incident permanently:
@@ -157,16 +157,21 @@ class SystemState:
                 mission.status = "WAITING_FOR_VEHICLE"
                 mission.assigned_vehicle_id = None
                 mission.progress = 0
+                mission.result_message = result_message or None
                 vehicle.assigned_mission_id = None
             elif vehicle_status in {"ASSIGNED", "BUSY"}:
                 mission.status = vehicle_status
+                mission.progress = progress
+                mission.result_message = result_message or None
             elif vehicle_status == "IDLE":
                 # IDLE is the only state that makes this vehicle selectable
-                # again; unfinished work must return to the dispatch queue.
+                # again. Keep completed mission history while the vehicle
+                # resets its own progress for future work.
                 if mission.status != "COMPLETED":
                     mission.status = "WAITING_FOR_VEHICLE"
                     mission.assigned_vehicle_id = None
                     mission.progress = 0
+                    mission.result_message = result_message or None
                 vehicle.assigned_mission_id = None
 
     def get_status(self) -> dict:
