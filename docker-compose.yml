@@ -9,16 +9,6 @@ services:
     volumes:
       - .:/app
 
-  dashboard:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    command: ["python", "-m", "app.dashboard.main"]
-    ports:
-      - "8081:8080"           # Dashboard communicates with the control-center
-    volumes:
-      - .:/app
-
 # Vehicles and sensors do not expose their ports to the host, as communication
 # occurs internally between containers via service name and not between hosts.
   vehicle-drone:
