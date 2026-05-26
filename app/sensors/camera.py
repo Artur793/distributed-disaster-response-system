@@ -3,8 +3,40 @@ import json
 import random
 import time
 
-s = socket.socket()
-s.connect(("control-center", 8080))
+CONTROL_CENTER_ADDRESS = ("control-center", 8080)
+REGISTRATION_RETRY_SECONDS = 3
+
+
+def send_request(request: str) -> str:
+    # The REST server closes the connection after each response; sensors open
+    # a new socket for each registration or incident report.
+    with socket.create_connection(CONTROL_CENTER_ADDRESS) as client:
+        client.sendall(request.encode())
+        chunks = []
+        while True:
+            chunk = client.recv(4096)
+            if not chunk:
+                break
+            chunks.append(chunk)
+    return b"".join(chunks).decode()
+
+
+def register_sensor(request: str) -> None:
+    while True:
+        try:
+            response = send_request(request)
+        except OSError as error:
+            print(f"Camera registration failed: {error}. Retrying...")
+            time.sleep(REGISTRATION_RETRY_SECONDS)
+            continue
+
+        print(response)
+        # A 409 means this known sensor is already recorded after reconnecting.
+        if response.startswith("HTTP/1.1 201") or response.startswith("HTTP/1.1 409"):
+            return
+
+        print("Camera registration rejected. Retrying...")
+        time.sleep(REGISTRATION_RETRY_SECONDS)
 
 payload = {
     "id": "camera-1",
@@ -27,8 +59,7 @@ request = (
     + body
 )
 
-s.send(request.encode())
-print(s.recv(4096).decode())
+register_sensor(request)
 
 incident_counter = 0
 
@@ -65,7 +96,10 @@ while True:
             + incident_body
         )
 
-        s.send(incident_request.encode())
+        try:
+            print(send_request(incident_request))
+        except OSError as error:
+            print(f"Camera incident report failed: {error}")
         incident_counter = incident_counter + 1
 
     time.sleep(5)
