@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Leitstelle Dashboard</title>
+    <link rel="stylesheet" href="/dashboard.css">
+    <script src="/dashboard.js" defer></script>
+</head>
+<body>
+    <header class="topbar">
+        <h1>Leitstelle</h1>
+        <div class="overview" aria-label="System overview">
+            <div><span>Vehicles</span><strong id="vehicle-count">0</strong></div>
+            <div><span>Sensors</span><strong id="sensor-count">0</strong></div>
+            <div><span>Incidents</span><strong id="incident-count">0</strong></div>
+            <div><span>Missions</span><strong id="mission-count">0</strong></div>
+        </div>
+    </header>
+
+    <main class="workspace">
+        <section class="map-panel" aria-label="Island map">
+            <div class="section-head">
+                <h2>Island Map</h2>
+            </div>
+            <div class="map-frame">
+                <div id="map-y-axis" class="map-axis y-axis" aria-hidden="true"></div>
+                <div id="map-grid" class="map-grid" aria-label="Map grid"></div>
+                <div id="map-x-axis" class="map-axis x-axis" aria-hidden="true"></div>
+            </div>
+            <div class="legend" aria-label="Map legend">
+                <span><i class="swatch land"></i>Land</span>
+                <span><i class="swatch water"></i>Water</span>
+                <span><i class="swatch harbor"></i>Harbor</span>
+                <span><i class="swatch depot"></i>Depot</span>
+                <span><i class="swatch charging_station"></i>Charging Station</span>
+                <span><i class="swatch landing_field"></i>Landing Field</span>
+                <span><i class="swatch bridge"></i>Bridge</span>
+                <span><i class="pin vehicle"></i>Vehicle</span>
+                <span><i class="pin sensor"></i>Sensor</span>
+                <span><i class="pin incident"></i>Incident</span>
+            </div>
+        </section>
+
+        <section class="status-panel" aria-label="System status">
+            <section class="data-section">
+                <div class="section-head"><h2>Vehicles</h2></div>
+                <div class="table-scroll">
+                    <table>
+                        <thead>
+                            <tr><th>ID</th><th>Type</th><th>Position</th><th>Status</th><th>Mission</th><th>Progress</th></tr>
+                        </thead>
+                        <tbody id="vehicles-body"></tbody>
+                    </table>
+                </div>
+            </section>
+
+            <section class="data-section">
+                <div class="section-head"><h2>Sensors</h2></div>
+                <div class="table-scroll">
+                    <table>
+                        <thead>
+                            <tr><th>ID</th><th>Type</th><th>Position</th><th>Status</th></tr>
+                        </thead>
+                        <tbody id="sensors-body"></tbody>
+                    </table>
+                </div>
+            </section>
+
+            <section class="data-section">
+                <div class="section-head"><h2>Incidents</h2></div>
+                <div class="table-scroll">
+                    <table>
+                        <thead>
+                            <tr><th>ID</th><th>Type</th><th>Position</th><th>Priority</th><th>Status</th></tr>
+                        </thead>
+                        <tbody id="incidents-body"></tbody>
+                    </table>
+                </div>
+            </section>
+
+            <section class="data-section missions">
+                <div class="section-head">
+                    <h2>Missions</h2>
+                    <div class="filter" role="group" aria-label="Mission filter">
+                        <button type="button" class="selected" data-filter="active">Active</button>
+                        <button type="button" data-filter="completed">Completed</button>
+                        <button type="button" data-filter="all">All</button>
+                    </div>
+                </div>
+                <div class="table-scroll">
+                    <table>
+                        <thead>
+                            <tr><th>ID</th><th>Vehicle</th><th>Area</th><th>Status</th><th>Progress</th><th>Result</th></tr>
+                        </thead>
+                        <tbody id="missions-body"></tbody>
+                    </table>
+                </div>
+            </section>
+        </section>
+    </main>
+</body>
+</html>

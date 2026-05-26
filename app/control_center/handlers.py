@@ -1,4 +1,5 @@
 import json
+from pathlib import Path
 
 from app.common.models import (
     Incident,
@@ -11,8 +12,20 @@ from app.common.models import (
     VehicleType,
 )
 from app.common.maphtml import render_map_html
-from app.common.statueshtml import render_status_html
-from app.common.dashboardhtml import render_dashboard_html
+
+
+DASHBOARD_STATIC_DIRECTORY = (
+    Path(__file__).resolve().parent.parent / "dashboard" / "static"
+)
+
+
+def _serve_dashboard_asset(filename: str, content_type: str):
+    path = DASHBOARD_STATIC_DIRECTORY / filename
+    try:
+        contents = path.read_text(encoding="utf-8")
+    except OSError:
+        return 404, {"Content-Type": "text/plain"}, "Not Found"
+    return 200, {"Content-Type": content_type}, contents
 
 def handle_get_status(state):
     return 200, {"Content-Type": "application/json"}, json.dumps(state.get_status())
@@ -32,15 +45,25 @@ def handle_get_map(state):
 
     return 200, {"Content-Type": "text/html"}, html
 
-def handle_get_dashboard(state):
-    # currently only map
+
+def handle_get_map_data(state):
     map_data = state.get_map_dict()
     if map_data is None:
-        return 404, {"Content-Type": "text/plain"}, "Dashboard not initialized"
+        return 404, {"Content-Type": "text/plain"}, "Map not initialized"
 
-    html = render_dashboard_html(state)
+    return 200, {"Content-Type": "application/json"}, json.dumps(map_data)
 
-    return 200, {"Content-Type": "text/html"}, html
+
+def handle_get_dashboard(state):
+    return _serve_dashboard_asset("dashboard.html", "text/html")
+
+
+def handle_get_dashboard_css(state):
+    return _serve_dashboard_asset("dashboard.css", "text/css")
+
+
+def handle_get_dashboard_js(state):
+    return _serve_dashboard_asset("dashboard.js", "application/javascript")
 
 
 def handle_post_unit(body: str, state):
