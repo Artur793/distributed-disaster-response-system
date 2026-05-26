@@ -28,7 +28,6 @@ def startsocket(state):
                 client.setblocking(False)
                 sockets.append(client)
                 buffers[client] = b""
-                print("Connected:", addr)
 
             # Existing client sent HTTP request
             else:
@@ -44,12 +43,14 @@ def startsocket(state):
                     # parse request
                     response = parsing_request(headers_text, body_text, state)
 
-                    print(headers_text)
-
                     sock.sendall(response)
+                    sockets.remove(sock)
+                    buffers.pop(sock, None)
+                    sock.close()
 
                 except ConnectionResetError:
-                    sockets.remove(sock)
+                    if sock in sockets:
+                        sockets.remove(sock)
                     buffers.pop(sock, None)
                     sock.close()
 
