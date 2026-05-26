@@ -5,7 +5,7 @@ def recv_full_request(sock, buffer):  # prototype ##### , had to be done with so
     
     chunk = sock.recv(4096)   # one time because , one request at a time
     if not chunk:
-        return None, None, buffer
+        raise ConnectionResetError
 
     buffer += chunk
 
@@ -78,6 +78,7 @@ def parsing_request(headers_text: str, body_text: str, state) -> bytes:
         response += f"{key}: {value}\r\n"
 
     response += f"Content-Length: {len(body_bytes)}\r\n"    # Use body_bytes to avoid problems with non-ASCII characters
+    response += "Connection: close\r\n"
     response += "\r\n"
 
     return response.encode("utf-8") + body_bytes
