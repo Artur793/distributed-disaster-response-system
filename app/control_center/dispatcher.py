@@ -1,4 +1,5 @@
 import threading
+import time
 from collections import deque
 
 from app.common.map import InfrastructureType, IslandMap, MapCell, TileType
@@ -15,9 +16,15 @@ def load_rpc_modules():
 
 
 class DispatchCoordinator:
-    def __init__(self, state: SystemState, retry_seconds: float = 3.0):
+    def __init__(
+        self,
+        state: SystemState,
+        retry_seconds: float = 3.0,
+        poll_seconds: float = 0.25,
+    ):
         self.state = state
         self.retry_seconds = retry_seconds
+        self.poll_seconds = poll_seconds
         self._stop_event = threading.Event()
         self._thread: threading.Thread | None = None
 
@@ -30,12 +37,14 @@ class DispatchCoordinator:
         self._thread.start()
 
     def _run(self) -> None:
+        next_dispatch_at = 0.0
         while not self._stop_event.is_set():
-            # Refresh availability first, then try waiting work against the
-            # latest vehicle states. Unassigned work is retried indefinitely.
+            # Poll often enough for position changes to be visible on the map.
             self.poll_vehicle_statuses()
-            self.dispatch_waiting_missions()
-            self._stop_event.wait(self.retry_seconds)
+            if time.monotonic() >= next_dispatch_at:
+                self.dispatch_waiting_missions()
+                next_dispatch_at = time.monotonic() + self.retry_seconds
+            self._stop_event.wait(self.poll_seconds)
 
     def dispatch_waiting_missions(self) -> None:
         for mission in self.state.waiting_missions():
@@ -87,6 +96,10 @@ class DispatchCoordinator:
                 state_name,
                 reply.progress_percent,
                 reply.result,
+                Position(
+                    x=reply.current_position.x,
+                    y=reply.current_position.y,
+                ),
             )
 
     @staticmethod
