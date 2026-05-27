@@ -65,7 +65,6 @@ class RoverVehicle(BaseVehicle):
 
     
     def execute_mission(self):
-        # simulate travel
         try:
 
             print(
@@ -73,23 +72,9 @@ class RoverVehicle(BaseVehicle):
                 f"starting repair mission"
             )
 
-            self.state = mission_pb2.BUSY
+            self.travel_to_mission()
 
-            
-            for progress in [10, 20, 30, 40]:
-
-                time.sleep(1)
-
-                self.progress = progress
-
-                print(
-                    f"[{self.vehicle_id}] "
-                    f"driving to location "
-                    f"{self.progress}%"
-                )
-
-           
-            for progress in [55, 70]:
+            for progress in [25, 50]:
 
                 time.sleep(1)
 
@@ -102,7 +87,7 @@ class RoverVehicle(BaseVehicle):
                 )
 
             
-            for progress in [85, 100]:
+            for progress in [75, 100]:
 
                 time.sleep(1)
 
@@ -199,8 +184,8 @@ if __name__ == "__main__":
     RPC_PORT = 50052
 
     POSITION = {
-        "x": 8,
-        "y": 15,
+        "x": 9,
+        "y": 6,
     }
 
     register_vehicle(

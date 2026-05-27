@@ -1,6 +1,6 @@
 from threading import RLock
 
-from app.common.models import Incident, Mission, Sensor, Vehicle
+from app.common.models import Incident, Mission, Position, Sensor, Vehicle
 from app.common.map import IslandMap
 
 
@@ -127,18 +127,29 @@ class SystemState:
             vehicle.progress = 0
             vehicle.result_message = None
 
+    def fail_mission(self, mission_id: str, result_message: str) -> None:
+        with self._lock:
+            mission = self.missions[mission_id]
+            mission.status = "ERROR"
+            mission.assigned_vehicle_id = None
+            mission.progress = 0
+            mission.result_message = result_message
+
     def update_vehicle_status(
         self,
         vehicle_id: str,
         vehicle_status: str,
         progress: int,
         result_message: str,
+        position: Position | None = None,
     ) -> None:
         with self._lock:
             vehicle = self.vehicles[vehicle_id]
             vehicle.status = vehicle_status
             vehicle.progress = progress
             vehicle.result_message = result_message or None
+            if position is not None:
+                vehicle.position = position
             mission_id = vehicle.assigned_mission_id
 
             if mission_id is None:

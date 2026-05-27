@@ -69,7 +69,7 @@ def generate_default_map() -> IslandMap:
             
             infrastructure = None  # only on land , by default none 
 
-            if (x, y) in [(4 , 3) , (10 , 17)]:   # harbor at top left corner , near water 
+            if (x, y) in [(3 , 3) , (10 , 18)]:   # harbor at top left corner , near water
                 infrastructure = InfrastructureType.HARBOR
 
             elif (x, y) == (10, 10): # depot in the center

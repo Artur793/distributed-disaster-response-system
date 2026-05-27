@@ -36,6 +36,9 @@ message Mission {
   int32 priority = 5;
   string assigned_vehicle_id = 6;
   AreaType area_type = 7;
+
+  // Ordered path calculated by the control center for vehicle movement
+  repeated Position route = 8;
 }
 
 message MissionAck {
@@ -55,4 +58,5 @@ message VehicleStatus {
   string assigned_mission_id = 3;
   int32 progress_percent = 4;
   string result = 5;
+  Position current_position = 6;
 }

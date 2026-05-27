@@ -1,4 +1,5 @@
 import threading
+import time
 from concurrent import futures
 
 import grpc
@@ -77,9 +78,29 @@ class BaseVehicle(mission_pb2_grpc.VehicleServiceServicer):
             ),
             progress_percent=self.progress,
             result=self.result_message,
+            current_position=mission_pb2.Position(
+                x=self.position["x"],
+                y=self.position["y"],
+            ),
         )
 
-    
+    def travel_to_mission(self) -> None:
+        self.state = mission_pb2.BUSY
+        self.progress = 0
+
+        # The control center already validated the route against the map.
+        # Vehicles execute it tile by tile and report each reached position.
+        for next_position in self.current_mission.route:
+            time.sleep(1)
+            self.position = {
+                "x": next_position.x,
+                "y": next_position.y,
+            }
+            print(
+                f"[{self.vehicle_id}] moving to "
+                f"({self.position['x']}, {self.position['y']})"
+            )
+
     def execute_mission(self): # the classes will override this 
         raise NotImplementedError
 

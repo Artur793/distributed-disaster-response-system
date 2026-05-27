@@ -321,4 +321,4 @@ document.querySelectorAll(".filter button").forEach((button) => {
 
 loadMap();
 refreshStatus();
-window.setInterval(refreshStatus, 1000);
+window.setInterval(refreshStatus, 250);
