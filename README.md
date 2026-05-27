@@ -1,5 +1,4 @@
-# Project Title# DoY5BlockTeamF  
-## Distributed Flood Response System — Sturmflut Nordsee
+# Distributed Flood Response System — Sturmflut Nordsee
 
 ---
 
