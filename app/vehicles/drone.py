@@ -60,7 +60,6 @@ class DroneVehicle(BaseVehicle):
 
     
     def execute_mission(self):
-        # simulate travel remaining 
         try:
 
             print(
@@ -68,36 +67,9 @@ class DroneVehicle(BaseVehicle):
                 f"starting aerial mission"
             )
 
-            self.state = mission_pb2.BUSY
+            self.travel_to_mission()
 
-            
-            for progress in [10, 20]:
-
-                time.sleep(1)
-
-                self.progress = progress
-
-                print(
-                    f"[{self.vehicle_id}] "
-                    f"taking off "
-                    f"{self.progress}%"
-                )
-
-            
-            for progress in [35, 50, 65]:
-
-                time.sleep(1)
-
-                self.progress = progress
-
-                print(
-                    f"[{self.vehicle_id}] "
-                    f"flying to target "
-                    f"{self.progress}%"
-                )
-
-            
-            for progress in [80, 90, 100]:
+            for progress in [25, 50, 75, 100]:
 
                 time.sleep(1)
 

@@ -61,7 +61,6 @@ class BoatVehicle(BaseVehicle):
 
     
     def execute_mission(self):
-        # remaining : simulate the position of the vehicle to the incident position
         try:
 
             print(
@@ -69,23 +68,9 @@ class BoatVehicle(BaseVehicle):
                 f"starting water mission"
             )
 
-            self.state = mission_pb2.BUSY
+            self.travel_to_mission()
 
-            # navigation
-            for progress in [10, 20, 30]:
-
-                time.sleep(1)
-
-                self.progress = progress
-
-                print(
-                    f"[{self.vehicle_id}] "
-                    f"navigating water route "
-                    f"{self.progress}%"
-                )
-
-            # monitoring
-            for progress in [45, 60, 75]:
+            for progress in [25, 50]:
 
                 time.sleep(1)
 
@@ -98,7 +83,7 @@ class BoatVehicle(BaseVehicle):
                 )
 
            
-            for progress in [90, 100]:
+            for progress in [75, 100]:
 
                 time.sleep(1)
 
