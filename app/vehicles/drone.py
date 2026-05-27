@@ -194,7 +194,7 @@ if __name__ == "__main__":
 
     POSITION = {
         "x": 5,
-        "y": 12,
+        "y": 14,
     }
 
     register_vehicle(

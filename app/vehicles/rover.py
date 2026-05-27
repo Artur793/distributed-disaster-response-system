@@ -199,8 +199,8 @@ if __name__ == "__main__":
     RPC_PORT = 50052
 
     POSITION = {
-        "x": 8,
-        "y": 15,
+        "x": 9,
+        "y": 6,
     }
 
     register_vehicle(

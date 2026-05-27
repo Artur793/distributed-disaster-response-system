@@ -194,8 +194,8 @@ if __name__ == "__main__":
     RPC_PORT = 50053
 
     POSITION = {
-        "x": 12,
-        "y": 8,
+        "x": 10,
+        "y": 18,
     }
 
     
