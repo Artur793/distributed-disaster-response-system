@@ -34,11 +34,11 @@ pytest -v
 
 | Test Category | Test Count | Passed | Failed |
 |---|---|---|---|
-| Incident API Tests | 3 | 3 | 0 |
+| Incident API Tests | 5 | 5 | 0 |
 | Latency & Performance Tests | 6 | 6 | 0 |
 | Status API Tests | 4 | 4 | 0 |
-| Unit Registration Tests | 6 | 6 | 0 |
-| TOTAL | 19 | 19 | 0 |
+| Unit Registration Tests | 7 | 7 | 0 |
+| TOTAL | 22 | 22 | 0 |
 
 ---
 
@@ -83,6 +83,8 @@ The tests validate:
 | `test_create_incident_with_known_source_returns_201` | Create incident using registered sensor | HTTP 201 |
 | `test_create_incident_with_unknown_source_returns_400` | Reject unknown source ID | HTTP 400 |
 | `test_duplicate_incident_returns_409` | Reject duplicate incident IDs | HTTP 409 |
+| `test_create_incident_without_position_returns_400` | Reject duplicate incident IDs | HTTP 400 |
+| `test_create_incident_outside_map_returns_400` | Reject incident outside the map | HTTP 400 |
 
 ---
 
@@ -212,6 +214,7 @@ The tests validate:
 | `test_duplicate_vehicle_registration_returns_409` | Reject duplicate ID | HTTP 409 |
 | `test_invalid_json_returns_400` | Reject malformed JSON | HTTP 400 |
 | `test_missing_vehicle_type_returns_400` | Validate required fields | HTTP 400 |
+| `test_missing_vehicle_rpc_endpoint_returns_400` | reject invalid vahicle in rpc | HTTP 400 |
 | `test_invalid_unit_type_returns_400` | Reject invalid unit type | HTTP 400 |
 
 ---
@@ -374,7 +377,7 @@ The system fulfills the tested requirements regarding:
 Final Result:
 
 ```text
-19 passed in 0.33s
+22 passed in 0.33s
 ```
 
 
