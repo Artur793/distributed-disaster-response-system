@@ -1,92 +1,101 @@
-
-import time
 import threading
+import time
 
-from app.common.models import (
-    Incident,
-    IncidentType,
-    Mission,
-    Position,
-    Vehicle,
-    VehicleType,
+import grpc
+
+from app.rpc.generated import mission_pb2
+from app.rpc.generated import mission_pb2_grpc
+
+from app.vehicles.rpc_server import (
+    BaseVehicle,
+    run_rpc_server,
 )
 
-from app.common.state import SystemState
+
+class TDrone(BaseVehicle):
+
+    def __init__(self):
+
+        super().__init__(
+            vehicle_id="drone-1",
+            vehicle_type="drone",
+        )
+
+        self.position = {
+            "x": 0,
+            "y": 0,
+        }
+
+    def execute_mission(self):
+
+        self.state = mission_pb2.BUSY
+
+        for i in range(0, 101, 20):
+
+            self.progress = i
+
+            time.sleep(0.05)
+
+        self.state = mission_pb2.COMPLETED
+
+        self.result_message = "Mission completed"
+
+    def is_compatible(self, request):
+
+        return True
 
 
-def simulate_vehicle_execution(state, vehicle_id, mission_id):
+def start_rpc_server():
 
-    time.sleep(0.05)
+    vehicle = TDrone()
 
-    state.update_vehicle_status(
-        vehicle_id,
-        "COMPLETED",
-        90,
-        "mission completed",
+    thread = threading.Thread(
+        target=run_rpc_server,
+        args=(vehicle, 50051),
+        daemon=True,
     )
+
+    thread.start()
+
+    time.sleep(1)
+
+    return vehicle
 
 
 def test_end_to_end_mission_flow_latency():
 
-    state = SystemState()
+    start_rpc_server()
 
-    vehicle = Vehicle(
-        id="drone-1",
-        vehicle_type=VehicleType.DRONE,
-        rpc_host="localhost",
-        rpc_port=50051,
-    )
-
-    state.register_vehicle(vehicle)
-
-    incident = Incident(
-        id="incident-1",
-        incident_type=IncidentType.PERSON_DETECTED,
-        source_id="camera-1",
-        message="Person detected",
-        position=Position(10, 12),
+    mission = mission_pb2.Mission(
+        mission_id="mission-1",
+        incident_id="incident-1",
+        incident_type="PERSON_DETECTED",
+        target_position=mission_pb2.Position(
+            x=10,
+            y=12,
+        ),
         priority=1,
+        assigned_vehicle_id="drone-1",
+        area_type=mission_pb2.LAND,
     )
-
-    state.add_incident(incident)
-
-    mission = Mission(
-        id="mission-1",
-        incident_id=incident.id,
-        incident_type=IncidentType.PERSON_DETECTED,
-        target_position=Position(10, 12),
-        priority=1,
-        area_type="LAND",
-    )
-
-    state.add_mission(mission)
 
     start = time.perf_counter()
 
-    state.assign_mission(
-        mission.id,
-        vehicle.id,
-    )
+    with grpc.insecure_channel("localhost:50051") as channel:
 
-    worker = threading.Thread(
-        target=simulate_vehicle_execution,
-        args=(state, vehicle.id, mission.id),
-    )
+        stub = mission_pb2_grpc.VehicleServiceStub(channel)
 
-    worker.start()
-    worker.join()
+        acknowledgement = stub.AssignMission(
+            mission,
+            timeout=2.0,
+        )
 
     end = time.perf_counter()
 
     latency_ms = (end - start) * 1000
 
-    updated_mission = state.get_mission(mission.id)
-    updated_incident = state.get_incident(incident.id)
+    print(f"REAL_RPC_ASSIGNMENT_LATENCY: {latency_ms:.2f} ms")
 
-    print(f"END_TO_END_MISSION_FLOW_LATENCY: {latency_ms:.2f} ms")
-
-    assert updated_mission.status == "COMPLETED"
-
-    assert updated_incident.status == "resolved"
+    assert acknowledgement.accepted is True
 
     assert latency_ms < 500

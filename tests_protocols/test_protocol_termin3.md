@@ -187,7 +187,7 @@ Measure responsiveness and concurrent mission execution.
 Measured Result:
 
 ```text
-END_TO_END_MISSION_FLOW_LATENCY: 55.14 ms
+END_TO_END_MISSION_FLOW_LATENCY: 10.62 ms
 ```
 
 Verified:
@@ -201,7 +201,7 @@ Verified:
 Measured Result:
 
 ```text
-RPC_STRESS_TOTAL_TIME: 13.97 ms
+RPC_STRESS_TOTAL_TIME: 37.50 ms
 ```
 
 Verified:
@@ -224,8 +224,8 @@ All selected Test Termin 3 scenarios completed successfully.
 Performance Results:
 
 ```text
-END_TO_END_MISSION_FLOW_LATENCY = 55.14 ms
-RPC_STRESS_TOTAL_TIME         = 13.97 ms
+END_TO_END_MISSION_FLOW_LATENCY = 10.62 ms
+RPC_STRESS_TOTAL_TIME         = 37.50 ms
 ```
 
 Overall Result:

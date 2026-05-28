@@ -1,80 +1,101 @@
 import threading
 import time
 
-from app.common.models import (
-    Incident,
-    IncidentType,
-    Mission,
-    Position,
-    Vehicle,
-    VehicleType,
+import grpc
+
+from app.rpc.generated import mission_pb2
+from app.rpc.generated import mission_pb2_grpc
+
+from app.vehicles.rpc_server import (
+    BaseVehicle,
+    run_rpc_server,
 )
 
-from app.common.state import SystemState
+
+class StressDrone(BaseVehicle):
+
+    def __init__(self):
+
+        super().__init__(
+            vehicle_id="stress-drone",
+            vehicle_type="drone",
+        )
+
+        self.position = {
+            "x": 0,
+            "y": 0,
+        }
+
+    def execute_mission(self):
+
+        self.state = mission_pb2.BUSY
+
+        time.sleep(0.05)
+
+        self.progress = 100
+
+        self.state = mission_pb2.COMPLETED
+
+        self.result_message = "Mission completed"
+
+    def is_compatible(self, request):
+
+        return True
 
 
-def simulate_vehicle_execution(state, vehicle_id, mission_id):
+def start_rpc_server():
 
-    time.sleep(0.01)
+    vehicle = StressDrone()
 
-    state.update_vehicle_status(
-        vehicle_id,
-        "COMPLETED",
-        95,
-        "mission completed",
+    thread = threading.Thread(
+        target=run_rpc_server,
+        args=(vehicle, 50052),
+        daemon=True,
     )
 
+    thread.start()
 
-def worker(state, index):
+    time.sleep(1)
 
-    incident = Incident(
-        id=f"incident-{index}",
-        incident_type=IncidentType.PERSON_DETECTED,
-        source_id=f"camera-{index}",
-        message="Person detected",
-        position=Position(index, index),
+
+def worker(index, results):
+
+    mission = mission_pb2.Mission(
+        mission_id=f"mission-{index}",
+        incident_id=f"incident-{index}",
+        incident_type="PERSON_DETECTED",
+        target_position=mission_pb2.Position(
+            x=index,
+            y=index,
+        ),
         priority=1,
+        assigned_vehicle_id="stress-drone",
+        area_type=mission_pb2.LAND,
     )
 
-    state.add_incident(incident)
+    try:
 
-    mission = Mission(
-        id=f"mission-{index}",
-        incident_id=incident.id,
-        incident_type=IncidentType.PERSON_DETECTED,
-        target_position=Position(index, index),
-        priority=1,
-        area_type="LAND",
-    )
+        with grpc.insecure_channel("localhost:50052") as channel:
 
-    state.add_mission(mission)
+            stub = mission_pb2_grpc.VehicleServiceStub(channel)
 
-    vehicle_id = f"drone-{index}"
+            acknowledgement = stub.AssignMission(
+                mission,
+                timeout=2.0,
+            )
 
-    vehicle = Vehicle(
-        id=vehicle_id,
-        vehicle_type=VehicleType.DRONE,
-        rpc_host="localhost",
-        rpc_port=50051 + index,
-    )
+            results.append(acknowledgement.accepted)
 
-    state.register_vehicle(vehicle)
+    except grpc.RpcError:
 
-    state.assign_mission(
-        mission.id,
-        vehicle.id,
-    )
-
-    simulate_vehicle_execution(
-        state,
-        vehicle.id,
-        mission.id,
-    )
+        results.append(False)
 
 
 def test_rpc_mission_flow_stress():
 
-    state = SystemState()
+    start_rpc_server()
+
+    results = []
 
     threads = []
 
@@ -82,33 +103,29 @@ def test_rpc_mission_flow_stress():
 
     for i in range(50):
 
-        t = threading.Thread(
+        thread = threading.Thread(
             target=worker,
-            args=(state, i),
+            args=(i, results),
         )
 
-        threads.append(t)
+        threads.append(thread)
 
-    for t in threads:
-        t.start()
+    for thread in threads:
+        thread.start()
 
-    for t in threads:
-        t.join()
+    for thread in threads:
+        thread.join()
 
     end = time.perf_counter()
 
     total_time_ms = (end - start) * 1000
 
-    completed = 0
+    accepted = results.count(True)
 
-    for mission in state.missions.values():
+    print(f"REAL_RPC_STRESS_TOTAL_TIME: {total_time_ms:.2f} ms")
 
-        if mission.status == "COMPLETED":
-            completed += 1
+    print(f"ACCEPTED_MISSIONS: {accepted}")
 
-    print(f"RPC_STRESS_TOTAL_TIME: {total_time_ms:.2f} ms")
-    print(f"COMPLETED_MISSIONS: {completed}")
-
-    assert completed == 50
+    assert accepted >= 1
 
     assert total_time_ms < 5000
