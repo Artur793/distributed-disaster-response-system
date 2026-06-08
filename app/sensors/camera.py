@@ -78,8 +78,8 @@ while True:
             "source_id": "camera-1",
             "message": f"Person Detected with High-Probability: {person_confidence}",
             "position": {
-                "x": 10,
-                "y": 12
+                "x": 6,
+                "y": 10
             },
             "priority": 1,
             "status": "open"

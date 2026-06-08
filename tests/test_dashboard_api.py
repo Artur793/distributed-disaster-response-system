@@ -28,7 +28,7 @@ def test_dashboard_assets_are_available():
     assert script.status_code == 200
     assert "application/javascript" in script.headers["Content-Type"]
     assert 'fetch("/status")' in script.text
-    assert "setInterval(refreshStatus, 1000)" in script.text
+    assert "setInterval(refreshStatus, 250)" in script.text
     assert "groupByPosition" in script.text
 
 
