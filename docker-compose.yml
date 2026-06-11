@@ -70,3 +70,9 @@ services:
       - control-center
     volumes:
       - .:/app
+
+  mosquitto:
+    image: eclipse-mosquitto:2
+    container_name: mosquitto
+    ports:
+    - "1883:1883"
