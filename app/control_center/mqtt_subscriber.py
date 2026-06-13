@@ -14,6 +14,9 @@ from app.common.state import SystemState
 
 
 class MQTTSubscriber:
+    BROKER_HOST = "mosquitto"
+    BROKER_PORT = 1883
+    STARTUP_RETRY_SECONDS = 5
     MAX_MESSAGE_AGE_SECONDS = 60
     INCIDENT_DUPLICATE_WINDOW_SECONDS = 30
 
@@ -39,11 +42,21 @@ class MQTTSubscriber:
         )
 
     def start(self):
-        self.client.connect(
-            "mosquitto",
-            1883,
-            60,
-        )
+        while True:
+            try:
+                self.client.connect(
+                    self.BROKER_HOST,
+                    self.BROKER_PORT,
+                    60,
+                )
+                break
+            except OSError as error:
+                print(
+                    "MQTT broker unavailable "
+                    f"({error}); retrying in "
+                    f"{self.STARTUP_RETRY_SECONDS}s"
+                )
+                time.sleep(self.STARTUP_RETRY_SECONDS)
 
         self.client.loop_start()
 
@@ -79,11 +92,6 @@ class MQTTSubscriber:
         userdata,
         msg,
     ):
-        with open("/tmp/mqtt_test.txt", "a") as f:
-            f.write("MESSAGE ARRIVED\n")
-        print("MQTT MESSAGE ARRIVED",flush=True)
-        print("TOPIC:", msg.topic)
-        print("PAYLOAD:", msg.payload.decode())
         try:
             payload = json.loads(msg.payload.decode())
         except Exception:
