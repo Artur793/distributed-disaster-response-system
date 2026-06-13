@@ -95,13 +95,26 @@ def publish_json(
     *,
     qos: int,
     wait_for_publish: bool = False,
+    retry_seconds: int = DEFAULT_RETRY_SECONDS,
 ) -> mqtt.MQTTMessageInfo:
-    message_info = client.publish(
-        topic,
-        payload=json.dumps(payload),
-        qos=qos,
-        retain=False,
-    )
-    if wait_for_publish:
-        message_info.wait_for_publish()
-    return message_info
+    encoded_payload = json.dumps(payload)
+
+    while True:
+        message_info = client.publish(
+            topic,
+            payload=encoded_payload,
+            qos=qos,
+            retain=False,
+        )
+        if not wait_for_publish:
+            return message_info
+
+        try:
+            message_info.wait_for_publish()
+            return message_info
+        except RuntimeError as error:
+            print(
+                f"MQTT publish to {topic} failed ({error}); "
+                f"retrying in {retry_seconds}s"
+            )
+            time.sleep(retry_seconds)
