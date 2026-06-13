@@ -6,6 +6,12 @@ import grpc
 
 from app.rpc.generated import mission_pb2
 from app.rpc.generated import mission_pb2_grpc
+from app.common.mqtt_publisher import (
+    MessageIdGenerator,
+    connect_mqtt_client,
+    message_envelope,
+    publish_json,
+)
 
 
 class BaseVehicle(mission_pb2_grpc.VehicleServiceServicer):
@@ -19,6 +25,9 @@ class BaseVehicle(mission_pb2_grpc.VehicleServiceServicer):
         self.result_message = ""
 
         self.current_mission = None
+        self.message_ids = MessageIdGenerator()
+        self.telemetry_topic = f"island/telemetry/{self.vehicle_id}"
+        self.mqtt_client = None
 
     
     def AssignMission(self, request, context): # implement the assignmission of rpc
@@ -51,6 +60,7 @@ class BaseVehicle(mission_pb2_grpc.VehicleServiceServicer):
         self.state = mission_pb2.ASSIGNED
         self.progress = 0
         self.result_message = ""
+        self.publish_telemetry()
 
         thread = threading.Thread(
             target=self.execute_mission,
@@ -84,9 +94,41 @@ class BaseVehicle(mission_pb2_grpc.VehicleServiceServicer):
             ),
         )
 
+    def start_mqtt_telemetry(self) -> None:
+        self.mqtt_client = connect_mqtt_client(client_id=self.vehicle_id)
+        self.publish_telemetry()
+
+    def publish_telemetry(self) -> None:
+        if self.mqtt_client is None:
+            return
+
+        payload = {
+            **message_envelope(self.vehicle_id, self.message_ids),
+            "vehicle_id": self.vehicle_id,
+            "position": {
+                "x": self.position["x"],
+                "y": self.position["y"],
+            },
+            "state": mission_pb2.VehicleState.Name(self.state),
+            "assigned_mission_id": (
+                self.current_mission.mission_id
+                if self.current_mission
+                else None
+            ),
+            "progress_percent": self.progress,
+            "result": self.result_message or None,
+        }
+        publish_json(
+            self.mqtt_client,
+            self.telemetry_topic,
+            payload,
+            qos=0,
+        )
+
     def travel_to_mission(self) -> None:
         self.state = mission_pb2.BUSY
         self.progress = 0
+        self.publish_telemetry()
 
         # The control center already validated the route against the map.
         # Vehicles execute it tile by tile and report each reached position.
@@ -100,6 +142,7 @@ class BaseVehicle(mission_pb2_grpc.VehicleServiceServicer):
                 f"[{self.vehicle_id}] moving to "
                 f"({self.position['x']}, {self.position['y']})"
             )
+            self.publish_telemetry()
 
     def execute_mission(self): # the classes will override this 
         raise NotImplementedError

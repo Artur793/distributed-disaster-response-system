@@ -74,6 +74,7 @@ class DroneVehicle(BaseVehicle):
                 time.sleep(1)
 
                 self.progress = progress
+                self.publish_telemetry()
 
                 print(
                     f"[{self.vehicle_id}] "
@@ -86,6 +87,7 @@ class DroneVehicle(BaseVehicle):
             self.result_message = (
                 "Water level alert inspection completed"
             )
+            self.publish_telemetry()
 
             print(
                 f"[{self.vehicle_id}] "
@@ -97,12 +99,14 @@ class DroneVehicle(BaseVehicle):
             self.state = mission_pb2.IDLE
             self.progress = 0
             self.current_mission = None
+            self.publish_telemetry()
 
         except Exception as error:
 
             self.state = mission_pb2.ERROR
 
             self.result_message = str(error)
+            self.publish_telemetry()
 
             print(
                 f"[{self.vehicle_id}] ERROR: {error}"
@@ -180,6 +184,7 @@ if __name__ == "__main__":
         vehicle_id=VEHICLE_ID,
         position=POSITION,
     )
+    vehicle.start_mqtt_telemetry()
 
     run_rpc_server(
         vehicle=vehicle,
