@@ -27,6 +27,7 @@ class BaseVehicle(mission_pb2_grpc.VehicleServiceServicer):
         self.current_mission = None
         self.message_ids = MessageIdGenerator()
         self.telemetry_topic = f"island/telemetry/{self.vehicle_id}"
+        self.status_topic = f"island/status/{self.vehicle_id}"
         self.mqtt_client = None
 
     
@@ -95,7 +96,18 @@ class BaseVehicle(mission_pb2_grpc.VehicleServiceServicer):
         )
 
     def start_mqtt_telemetry(self) -> None:
-        self.mqtt_client = connect_mqtt_client(client_id=self.vehicle_id)
+        will_payload = {
+            **message_envelope(self.vehicle_id, self.message_ids),
+            "vehicle_id": self.vehicle_id,
+            "status": "ERROR",
+            "result": "Unexpected MQTT disconnect",
+        }
+        self.mqtt_client = connect_mqtt_client(
+            client_id=self.vehicle_id,
+            will_topic=self.status_topic,
+            will_payload=will_payload,
+            will_qos=1,
+        )
         self.publish_telemetry()
 
     def publish_telemetry(self) -> None:
