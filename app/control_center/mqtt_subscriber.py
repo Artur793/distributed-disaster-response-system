@@ -98,7 +98,7 @@ class MQTTSubscriber:
             print("Invalid MQTT JSON")
             return
 
-        if not self._validate_message(payload):
+        if not self._validate_message(payload, msg.topic):
             return
 
         topic = msg.topic
@@ -112,7 +112,7 @@ class MQTTSubscriber:
         elif topic.startswith("island/status"):
             self._handle_status(payload)
 
-    def _validate_message(self, payload: dict) -> bool:
+    def _validate_message(self, payload: dict, topic: str) -> bool:
         message_id = payload.get("message_id")
 
         if not message_id:
@@ -123,8 +123,12 @@ class MQTTSubscriber:
             return False
 
         timestamp_string = payload.get("timestamp")
+        should_check_message_age = not topic.startswith("island/status")
 
-        if timestamp_string:
+        if should_check_message_age and not timestamp_string:
+            return False
+
+        if timestamp_string and should_check_message_age:
             try:
                 timestamp = datetime.fromisoformat(
                     timestamp_string.replace("Z", "+00:00")
