@@ -3,8 +3,17 @@ import json
 import random
 import time
 
+from app.common.mqtt_publisher import (
+    MessageIdGenerator,
+    connect_mqtt_client,
+    message_envelope,
+    publish_json,
+)
+
 CONTROL_CENTER_ADDRESS = ("control-center", 8080)
 REGISTRATION_RETRY_SECONDS = 3
+SENSOR_ID = "water-1"
+MQTT_TOPIC = f"island/events/sensor/{SENSOR_ID}"
 
 
 def send_request(request: str) -> str:
@@ -39,7 +48,7 @@ def register_sensor(request: str) -> None:
         time.sleep(REGISTRATION_RETRY_SECONDS)
 
 payload = {
-    "id": "water-1",
+    "id": SENSOR_ID,
     "unit": "sensor",
     "sensor_type": "water",
     "position": {
@@ -61,6 +70,8 @@ request = (
 
 register_sensor(request)
 
+mqtt_client = connect_mqtt_client(client_id=SENSOR_ID)
+message_ids = MessageIdGenerator()
 incident_counter = 0
 
 while True:
@@ -73,9 +84,10 @@ while True:
     if water_level_cm > 80:
 
         incident_payload = {
+            **message_envelope(SENSOR_ID, message_ids),
             "id": f"water-1-incident-{incident_counter}",
             "incident_type": "water_level_alert",
-            "source_id": "water-1",
+            "source_id": SENSOR_ID,
             "message": f"Critical water level detected: {water_level_cm}",
             "position": {
                 "x": 1,
@@ -85,21 +97,14 @@ while True:
             "status": "open"
         }
 
-        incident_body = json.dumps(incident_payload)
-
-        incident_request = (
-            "POST /incident HTTP/1.1\r\n"
-            "Host: control-center\r\n"
-            "Content-Type: application/json\r\n"
-            f"Content-Length: {len(incident_body.encode())}\r\n"
-            "\r\n"
-            + incident_body
+        publish_json(
+            mqtt_client,
+            MQTT_TOPIC,
+            incident_payload,
+            qos=1,
+            wait_for_publish=True,
         )
-
-        try:
-            print(send_request(incident_request))
-        except OSError as error:
-            print(f"Water incident report failed: {error}")
+        print(f"Water MQTT incident published: {incident_payload['id']}")
         incident_counter = incident_counter + 1
 
     time.sleep(5)
