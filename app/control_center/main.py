@@ -2,6 +2,7 @@ from app.control_center.tcpserversocket import startsocket
 from app.control_center.dispatcher import DispatchCoordinator
 from app.common.state import SystemState
 from app.common.mapgenerator import generate_default_map
+from app.control_center.mqtt_subscriber import MQTTSubscriber
 
 state = SystemState()
 print("server is starting ... ")
@@ -12,6 +13,9 @@ state.set_map(default_map)
 
 # Assignment and status refresh are asynchronous so POST /incident only
 # records work and does not block while waiting for a reachable idle vehicle.
+mqtt = MQTTSubscriber(state)
+mqtt.start()
+
 coordinator = DispatchCoordinator(state)
 coordinator.start()
 
