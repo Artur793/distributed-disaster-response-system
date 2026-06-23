@@ -29,7 +29,7 @@ Wir verwenden die aktuell vorhandenen drei Fahrzeuge:
 ```text
 drone-1
 rover-1
-boat-1
+drone-2 or rover-2
 ```
 
 Alle drei Fahrzeuge implementieren dieselbe Ricart/Agrawala-Logik. Es werden keine neuen Fahrzeugtypen nur fuer Aufgabe 4 benoetigt.
