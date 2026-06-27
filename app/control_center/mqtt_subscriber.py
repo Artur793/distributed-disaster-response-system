@@ -75,6 +75,7 @@ class MQTTSubscriber:
         client.subscribe("island/events/#", qos=1)
         client.subscribe("island/telemetry/#", qos=0)
         client.subscribe("island/status/#", qos=1)
+        client.subscribe("island/coordination/charging/status",qos=1,)
 
     def on_disconnect(
         self,
@@ -111,6 +112,9 @@ class MQTTSubscriber:
 
         elif topic.startswith("island/status"):
             self._handle_status(payload)
+        
+        elif topic.startswith("island/coordination/charging/status"):
+            self._handle_charging_status(payload)
 
     def _validate_message(self, payload: dict, topic: str) -> bool:
         message_id = payload.get("message_id")
@@ -263,3 +267,81 @@ class MQTTSubscriber:
 
         except Exception as e:
             print(f"Status processing failed: {e}")
+    
+    def _handle_charging_status(
+    self,
+    payload: dict,):
+
+        try:
+
+            required_fields = [
+
+                "vehicle_id",
+
+                "vehicle_state",
+
+                "ra_state",
+
+                "lamport",
+
+                "battery_percent",
+
+            ]
+
+            for field in required_fields:
+
+                if field not in payload:
+
+                    print(
+                        f"Charging status missing field: {field}"
+                    )
+
+                    return
+
+            self.state.update_charging_status(payload)
+
+            charging = self.state.get_charging_status()
+
+            print(
+                f"[Charging] "
+                f"{payload['vehicle_id']} "
+                f"{payload['ra_state']} "
+                f"(Lamport {payload['lamport']})"
+            )
+
+            if charging["safety_violation"]:
+
+                print()
+
+                print(
+                    "===================================="
+                )
+
+                print(
+                    "SAFETY VIOLATION DETECTED"
+                )
+
+                print(
+                    "Multiple vehicles entered HELD."
+                )
+
+                print(
+                    f"Current holder(s): "
+                    f"{charging['current_holder']}"
+                )
+
+                print(
+                    "===================================="
+                )
+
+                print()
+
+        except Exception as error:
+
+            print(
+
+                f"Charging status processing failed: "
+
+                f"{error}"
+
+            )

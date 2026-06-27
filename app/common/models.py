@@ -1,4 +1,4 @@
-from dataclasses import dataclass, asdict
+from dataclasses import dataclass, asdict, field
 from enum import Enum
 
 
@@ -94,4 +94,57 @@ class Mission:
     def to_dict(self) -> dict:
         data = asdict(self)
         data["incident_type"] = self.incident_type.value
+        return data
+
+# ============================================================
+# Aufgabe 4
+# Ricart / Agrawala dashboard models
+# ============================================================
+
+from dataclasses import field
+
+
+@dataclass
+class ChargingParticipantStatus:
+
+    vehicle_id: str
+
+    vehicle_state: str
+
+    ra_state: str
+
+    lamport: int
+
+    battery_percent: int
+
+    waiting_for: list[str] = field(default_factory=list)
+
+    deferred_replies: list[str] = field(default_factory=list)
+
+    last_update: str = ""
+
+    def to_dict(self):
+
+        return asdict(self)
+
+
+@dataclass
+class ChargingCoordinationStatus:
+
+    resource_id: str
+
+    current_holder: str | None = None
+
+    waiting_vehicles: list[str] = field(default_factory=list)
+
+    participants: list[ChargingParticipantStatus] = field(default_factory=list)
+
+    safety_violation: bool = False
+
+    last_update: str = ""
+
+    def to_dict(self):
+
+        data = asdict(self)
+
         return data

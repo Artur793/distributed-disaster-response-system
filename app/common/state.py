@@ -2,7 +2,7 @@ from threading import RLock
 
 from app.common.models import Incident, Mission, Position, Sensor, Vehicle
 from app.common.map import IslandMap
-
+from app.common.charging_coordination import ChargingCoordinationState
 
 class SystemState:
     def __init__(self):
@@ -13,6 +13,12 @@ class SystemState:
         self.incidents: dict[str, Incident] = {}
         self.missions: dict[str, Mission] = {}
         self.map: IslandMap | None = None
+        # ============================================================
+            # Aufgabe 4
+            # Ricart / Agrawala charging coordination state
+        # ============================================================
+
+        self.charging_coordination = ChargingCoordinationState()
 
     def register_vehicle(self, vehicle: Vehicle) -> bool:
         with self._lock:
@@ -197,4 +203,49 @@ class SystemState:
                 "sensors": [sensor.to_dict() for sensor in self.sensors.values()],
                 "incidents": [incident.to_dict() for incident in self.incidents.values()],
                 "missions": [mission.to_dict() for mission in self.missions.values()],
+                "charging_coordination": self.get_charging_status(),
             }
+
+    # ============================================================
+    # Aufgabe 4
+        # Charging Coordination
+    # ============================================================
+
+    def update_charging_status(
+
+        self,
+
+        payload: dict,
+
+    ) -> None:
+
+        self.charging_coordination.update_participant(
+
+            vehicle_id=payload["vehicle_id"],
+
+            vehicle_state=payload["vehicle_state"],
+
+            ra_state=payload["ra_state"],
+
+            lamport=payload["lamport"],
+
+            battery_percent=payload["battery_percent"],
+
+            waiting_for=payload.get("waiting_for", []),
+
+            deferred_replies=payload.get(
+                "deferred_replies",
+                [],
+            ),
+
+            timestamp=payload.get(
+                "sent_at",
+                "",
+            ),
+
+        )
+
+
+    def get_charging_status(self) -> dict:
+
+        return self.charging_coordination.get_status()
