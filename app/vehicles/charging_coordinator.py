@@ -55,6 +55,19 @@ class ChargingSnapshot:
         }
 
 
+@dataclass(frozen=True)
+class ChargingRequest:
+    request_id: str
+    lamport: int
+    battery_percent: int
+
+
+class RequestDecision:
+    IGNORE = "IGNORE"
+    REPLY = "REPLY"
+    DEFER = "DEFER"
+
+
 class VehicleChargingCoordinator:
     """Vehicle-local Ricart/Agrawala state for the charging slot."""
 
@@ -107,6 +120,109 @@ class VehicleChargingCoordinator:
                 and self.ra_state == ChargingRAState.RELEASED
                 and self.battery_percent < self.config.battery_low_threshold
             )
+
+    def start_request(self) -> ChargingRequest | None:
+        with self._lock:
+            if (
+                not self.enabled
+                or self.ra_state != ChargingRAState.RELEASED
+            ):
+                return None
+
+            self.lamport += 1
+            self.ra_state = ChargingRAState.WANTED
+            self.own_request_id = (
+                f"{self.config.vehicle_id}-{self.lamport}"
+            )
+            self.own_request_priority = (
+                self.lamport,
+                self.config.vehicle_id,
+            )
+            self.waiting_for = set(self.config.other_participants)
+            self.deferred_replies.clear()
+            self.seen_request_ids.add(self.own_request_id)
+
+            if not self.waiting_for:
+                self.ra_state = ChargingRAState.HELD
+
+            return ChargingRequest(
+                request_id=self.own_request_id,
+                lamport=self.lamport,
+                battery_percent=self.battery_percent,
+            )
+
+    def receive_request(
+        self,
+        *,
+        message_id: str,
+        request_id: str,
+        sender_id: str,
+        lamport: int,
+    ) -> str:
+        with self._lock:
+            if (
+                not self.enabled
+                or sender_id == self.config.vehicle_id
+                or message_id in self.seen_message_ids
+                or request_id in self.seen_request_ids
+            ):
+                return RequestDecision.IGNORE
+
+            self.seen_message_ids.add(message_id)
+            self.seen_request_ids.add(request_id)
+            self.lamport = max(self.lamport, lamport) + 1
+
+            incoming_priority = (lamport, sender_id)
+            own_has_priority = (
+                self.own_request_priority is not None
+                and self.own_request_priority < incoming_priority
+            )
+
+            if (
+                self.ra_state == ChargingRAState.HELD
+                or (
+                    self.ra_state == ChargingRAState.WANTED
+                    and own_has_priority
+                )
+            ):
+                self.deferred_replies.add(sender_id)
+                return RequestDecision.DEFER
+
+            return RequestDecision.REPLY
+
+    def receive_reply(
+        self,
+        *,
+        message_id: str,
+        request_id: str,
+        sender_id: str,
+        target_vehicle_id: str,
+        lamport: int,
+    ) -> bool:
+        with self._lock:
+            if (
+                not self.enabled
+                or target_vehicle_id != self.config.vehicle_id
+                or message_id in self.seen_message_ids
+            ):
+                return False
+
+            self.seen_message_ids.add(message_id)
+            self.lamport = max(self.lamport, lamport) + 1
+
+            if (
+                self.ra_state != ChargingRAState.WANTED
+                or request_id != self.own_request_id
+            ):
+                return False
+
+            self.waiting_for.discard(sender_id)
+
+            if not self.waiting_for:
+                self.ra_state = ChargingRAState.HELD
+                return True
+
+            return False
 
     def next_lamport(self) -> int:
         with self._lock:

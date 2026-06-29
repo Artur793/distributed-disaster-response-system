@@ -1,3 +1,4 @@
+import json
 import threading
 import time
 from concurrent import futures
@@ -13,7 +14,10 @@ from app.common.mqtt_publisher import (
     publish_json,
     utc_timestamp,
 )
-from app.vehicles.charging_coordinator import VehicleChargingCoordinator
+from app.vehicles.charging_coordinator import (
+    RequestDecision,
+    VehicleChargingCoordinator,
+)
 
 
 class BaseVehicle(mission_pb2_grpc.VehicleServiceServicer):
@@ -30,6 +34,10 @@ class BaseVehicle(mission_pb2_grpc.VehicleServiceServicer):
         self.message_ids = MessageIdGenerator()
         self.telemetry_topic = f"island/telemetry/{self.vehicle_id}"
         self.status_topic = f"island/status/{self.vehicle_id}"
+        self.charging_request_topic = "island/coordination/charging/request"
+        self.charging_reply_topic = (
+            f"island/coordination/charging/reply/{self.vehicle_id}"
+        )
         self.charging_status_topic = "island/coordination/charging/status"
         self.mqtt_client = None
         self._charging_status_thread_started = False
@@ -115,9 +123,58 @@ class BaseVehicle(mission_pb2_grpc.VehicleServiceServicer):
             will_payload=will_payload,
             will_qos=1,
         )
+        self.configure_charging_mqtt()
         self.publish_telemetry()
         self.start_charging_status_publisher()
         self.publish_charging_status()
+
+    def configure_charging_mqtt(self) -> None:
+        if (
+            self.mqtt_client is None
+            or not self.charging_coordinator.enabled
+        ):
+            return
+
+        self.mqtt_client.on_connect = self._on_charging_mqtt_connect
+        self.mqtt_client.on_message = self._on_charging_mqtt_message
+        self.subscribe_charging_topics()
+
+    def _on_charging_mqtt_connect(
+        self,
+        client,
+        userdata,
+        flags,
+        reason_code,
+        properties,
+    ) -> None:
+        self.subscribe_charging_topics()
+
+    def subscribe_charging_topics(self) -> None:
+        if self.mqtt_client is None:
+            return
+
+        self.mqtt_client.subscribe(self.charging_request_topic, qos=1)
+        self.mqtt_client.subscribe(self.charging_reply_topic, qos=1)
+        print(
+            f"[{self.vehicle_id}] subscribed to RA charging topics"
+        )
+
+    def _on_charging_mqtt_message(
+        self,
+        client,
+        userdata,
+        msg,
+    ) -> None:
+        try:
+            payload = json.loads(msg.payload.decode())
+        except Exception:
+            print(f"[{self.vehicle_id}] invalid charging MQTT JSON")
+            return
+
+        if msg.topic == self.charging_request_topic:
+            self.handle_charging_request(payload)
+        elif msg.topic == self.charging_reply_topic:
+            self.handle_charging_reply(payload)
 
     def publish_telemetry(self) -> None:
         if self.mqtt_client is None:
@@ -195,6 +252,141 @@ class BaseVehicle(mission_pb2_grpc.VehicleServiceServicer):
             payload,
             qos=1,
         )
+
+    def request_charging_access(self) -> None:
+        if self.mqtt_client is None:
+            return
+
+        request = self.charging_coordinator.start_request()
+        if request is None:
+            return
+
+        payload = {
+            "message_id": self.message_ids.next(self.vehicle_id),
+            "type": "REQUEST",
+            "resource_id": self.charging_coordinator.config.resource_id,
+            "sender_id": self.vehicle_id,
+            "lamport": request.lamport,
+            "request_id": request.request_id,
+            "battery_percent": request.battery_percent,
+            "reason": "LOW_BATTERY",
+            "sent_at": utc_timestamp(),
+        }
+        publish_json(
+            self.mqtt_client,
+            self.charging_request_topic,
+            payload,
+            qos=1,
+        )
+        print(
+            f"[{self.vehicle_id}] sent RA REQUEST "
+            f"{request.request_id}"
+        )
+        self.publish_charging_status()
+
+    def handle_charging_request(self, payload: dict) -> None:
+        required_fields = {
+            "message_id",
+            "resource_id",
+            "sender_id",
+            "lamport",
+            "request_id",
+        }
+        if not required_fields.issubset(payload):
+            print(f"[{self.vehicle_id}] charging REQUEST missing fields")
+            return
+
+        if (
+            payload["resource_id"]
+            != self.charging_coordinator.config.resource_id
+        ):
+            return
+
+        decision = self.charging_coordinator.receive_request(
+            message_id=payload["message_id"],
+            request_id=payload["request_id"],
+            sender_id=payload["sender_id"],
+            lamport=payload["lamport"],
+        )
+
+        if decision == RequestDecision.REPLY:
+            self.send_charging_reply(
+                target_vehicle_id=payload["sender_id"],
+                request_id=payload["request_id"],
+            )
+        elif decision == RequestDecision.DEFER:
+            print(
+                f"[{self.vehicle_id}] deferred RA REPLY to "
+                f"{payload['sender_id']}"
+            )
+
+        if decision != RequestDecision.IGNORE:
+            self.publish_charging_status()
+
+    def send_charging_reply(
+        self,
+        *,
+        target_vehicle_id: str,
+        request_id: str,
+    ) -> None:
+        if self.mqtt_client is None:
+            return
+
+        lamport = self.charging_coordinator.next_lamport()
+        payload = {
+            "message_id": self.message_ids.next(self.vehicle_id),
+            "type": "REPLY",
+            "resource_id": self.charging_coordinator.config.resource_id,
+            "sender_id": self.vehicle_id,
+            "target_vehicle_id": target_vehicle_id,
+            "lamport": lamport,
+            "request_id": request_id,
+            "sent_at": utc_timestamp(),
+        }
+        publish_json(
+            self.mqtt_client,
+            f"island/coordination/charging/reply/{target_vehicle_id}",
+            payload,
+            qos=1,
+        )
+        print(
+            f"[{self.vehicle_id}] sent RA REPLY to "
+            f"{target_vehicle_id} for {request_id}"
+        )
+
+    def handle_charging_reply(self, payload: dict) -> None:
+        required_fields = {
+            "message_id",
+            "resource_id",
+            "sender_id",
+            "target_vehicle_id",
+            "lamport",
+            "request_id",
+        }
+        if not required_fields.issubset(payload):
+            print(f"[{self.vehicle_id}] charging REPLY missing fields")
+            return
+
+        if (
+            payload["resource_id"]
+            != self.charging_coordinator.config.resource_id
+        ):
+            return
+
+        entered_held = self.charging_coordinator.receive_reply(
+            message_id=payload["message_id"],
+            request_id=payload["request_id"],
+            sender_id=payload["sender_id"],
+            target_vehicle_id=payload["target_vehicle_id"],
+            lamport=payload["lamport"],
+        )
+
+        if entered_held:
+            print(
+                f"[{self.vehicle_id}] entered RA HELD for charging"
+            )
+
+        self.publish_charging_status()
 
     def travel_to_mission(self) -> None:
         self.state = mission_pb2.BUSY
