@@ -11,6 +11,7 @@ from app.common.mqtt_publisher import (
     connect_mqtt_client,
     message_envelope,
     publish_json,
+    utc_timestamp,
 )
 from app.vehicles.charging_coordinator import VehicleChargingCoordinator
 
@@ -29,7 +30,9 @@ class BaseVehicle(mission_pb2_grpc.VehicleServiceServicer):
         self.message_ids = MessageIdGenerator()
         self.telemetry_topic = f"island/telemetry/{self.vehicle_id}"
         self.status_topic = f"island/status/{self.vehicle_id}"
+        self.charging_status_topic = "island/coordination/charging/status"
         self.mqtt_client = None
+        self._charging_status_thread_started = False
         self.charging_coordinator = (
             VehicleChargingCoordinator.from_environment(self.vehicle_id)
         )
@@ -113,6 +116,8 @@ class BaseVehicle(mission_pb2_grpc.VehicleServiceServicer):
             will_qos=1,
         )
         self.publish_telemetry()
+        self.start_charging_status_publisher()
+        self.publish_charging_status()
 
     def publish_telemetry(self) -> None:
         if self.mqtt_client is None:
@@ -139,6 +144,56 @@ class BaseVehicle(mission_pb2_grpc.VehicleServiceServicer):
             self.telemetry_topic,
             payload,
             qos=0,
+        )
+
+    def start_charging_status_publisher(self) -> None:
+        if (
+            self._charging_status_thread_started
+            or not self.charging_coordinator.enabled
+        ):
+            return
+
+        self._charging_status_thread_started = True
+        thread = threading.Thread(
+            target=self._charging_status_loop,
+            daemon=True,
+        )
+        thread.start()
+
+    def _charging_status_loop(self) -> None:
+        while True:
+            time.sleep(1)
+            snapshot = self.charging_coordinator.snapshot()
+            if snapshot.needs_periodic_status:
+                self.publish_charging_status(snapshot)
+
+    def publish_charging_status(self, snapshot=None) -> None:
+        if (
+            self.mqtt_client is None
+            or not self.charging_coordinator.enabled
+        ):
+            return
+
+        snapshot = snapshot or self.charging_coordinator.snapshot()
+        payload = {
+            "message_id": self.message_ids.next(self.vehicle_id),
+            "type": "STATUS",
+            "resource_id": snapshot.resource_id,
+            "sender_id": self.vehicle_id,
+            "vehicle_id": self.vehicle_id,
+            "vehicle_state": mission_pb2.VehicleState.Name(self.state),
+            "ra_state": snapshot.ra_state,
+            "lamport": snapshot.lamport,
+            "waiting_for": snapshot.waiting_for,
+            "deferred_replies": snapshot.deferred_replies,
+            "battery_percent": snapshot.battery_percent,
+            "sent_at": utc_timestamp(),
+        }
+        publish_json(
+            self.mqtt_client,
+            self.charging_status_topic,
+            payload,
+            qos=1,
         )
 
     def travel_to_mission(self) -> None:

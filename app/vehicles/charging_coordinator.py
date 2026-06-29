@@ -47,6 +47,13 @@ class ChargingSnapshot:
     own_request_id: str | None = None
     own_request_priority: tuple[int, str] | None = None
 
+    @property
+    def needs_periodic_status(self) -> bool:
+        return self.ra_state in {
+            ChargingRAState.WANTED,
+            ChargingRAState.HELD,
+        }
+
 
 class VehicleChargingCoordinator:
     """Vehicle-local Ricart/Agrawala state for the charging slot."""
