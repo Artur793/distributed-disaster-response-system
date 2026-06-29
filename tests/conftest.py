@@ -11,6 +11,13 @@ HOST = "127.0.0.1"
 PORT = 8080
 
 
+def pytest_configure(config):
+    config.addinivalue_line(
+        "markers",
+        "no_control_center: test does not need the control-center server",
+    )
+
+
 def wait_for_server(host: str, port: int, timeout: float = 10.0) -> None:
     start = time.time()
 
@@ -25,7 +32,15 @@ def wait_for_server(host: str, port: int, timeout: float = 10.0) -> None:
 
 
 @pytest.fixture(scope="session", autouse=True)
-def control_center_server():
+def control_center_server(request):
+    selected_tests = request.session.items
+    if selected_tests and all(
+        item.get_closest_marker("no_control_center")
+        for item in selected_tests
+    ):
+        yield
+        return
+
     process = subprocess.Popen(
         [sys.executable, "-m", "app.control_center.main"],
         stdout=subprocess.PIPE,
