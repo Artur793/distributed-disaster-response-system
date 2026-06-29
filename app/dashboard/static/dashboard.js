@@ -266,6 +266,122 @@ function renderMarkers(status) {
     });
 }
 
+function renderCharging(charging) {
+
+    if (!charging) {
+        return;
+    }
+
+    setText(
+        "charging-resource",
+        charging.resource_id || "-"
+    );
+
+    setText(
+        "charging-holder",
+        charging.current_holder || "-"
+    );
+
+    setText(
+        "charging-waiting",
+        charging.waiting_vehicles.length
+            ? charging.waiting_vehicles.join(", ")
+            : "-"
+    );
+
+    const safety =
+    document.getElementById(
+        "charging-safety"
+    );
+
+    safety.textContent =
+        charging.safety_violation
+            ? "SAFETY VIOLATION"
+            : "OK";
+
+    safety.className =
+        charging.safety_violation
+            ? "safety-warning"
+            : "safety-ok";
+
+    const tbody =
+        document.getElementById(
+            "charging-body"
+        );
+
+    tbody.replaceChildren();
+
+    if (
+        !charging.participants ||
+        charging.participants.length === 0
+    ) {
+
+        renderEmpty(tbody, 7);
+
+        return;
+    }
+
+    charging.participants.forEach(
+        (participant) => {
+
+            const row =
+                document.createElement("tr");
+
+            row.appendChild(
+                makeCell(participant.vehicle_id)
+            );
+
+            row.appendChild(
+                makeCell(participant.vehicle_state)
+            );
+
+            row.appendChild(
+                makeCell(participant.ra_state)
+            );
+
+            row.appendChild(
+                makeCell(
+                    String(participant.lamport)
+                )
+            );
+
+            row.appendChild(
+                makeCell(
+                    `${participant.battery_percent}%`
+                )
+            );
+
+            row.appendChild(
+                makeCell(
+
+                    participant.waiting_for.length
+
+                        ? participant.waiting_for.join(", ")
+
+                        : "-"
+
+                )
+            );
+
+            row.appendChild(
+                makeCell(
+
+                    participant.deferred_replies.length
+
+                        ? participant.deferred_replies.join(", ")
+
+                        : "-"
+
+                )
+            );
+
+            tbody.appendChild(row);
+
+        }
+    );
+
+}
+
 function renderStatus(status) {
     setText("vehicle-count", status.vehicle_count);
     setText("sensor-count", status.sensor_count);
@@ -276,6 +392,9 @@ function renderStatus(status) {
     renderIncidents(status.incidents);
     renderMissions(status.missions);
     renderMarkers(status);
+    renderCharging(
+        status.charging_coordination
+    );
 }
 
 async function loadMap() {

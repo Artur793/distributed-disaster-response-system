@@ -29,6 +29,7 @@ s.send(request.encode())
 print(s.recv(4096).decode())"""
 
 import json
+import os
 import socket
 import time
 
@@ -163,14 +164,14 @@ def register_vehicle( # register at the control center using REST
 
 if __name__ == "__main__":
 
-    VEHICLE_ID = "drone-1"
+    VEHICLE_ID = os.getenv("VEHICLE_ID", "drone-1")
 
-    RPC_HOST = "vehicle-drone"
-    RPC_PORT = 50051
+    RPC_HOST = os.getenv("RPC_HOST", "vehicle-drone")
+    RPC_PORT = int(os.getenv("RPC_PORT", "50051"))
 
     POSITION = {
-        "x": 5,
-        "y": 14,
+        "x": int(os.getenv("POSITION_X", "5")),
+        "y": int(os.getenv("POSITION_Y", "14")),
     }
 
     register_vehicle(

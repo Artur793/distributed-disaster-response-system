@@ -1,3 +1,22 @@
+x-ra-charging-env: &ra-charging-env
+  RA_PARTICIPANTS: drone-1,rover-1,rover-2
+  BATTERY_INITIAL_PERCENT: "15"
+  BATTERY_LOW_THRESHOLD: "20"
+  CHARGING_RATE_PERCENT_PER_SECOND: "10"
+  RA_REPLY_TIMEOUT_SECONDS: "10"
+  CHARGING_STATION_X: "9"
+  CHARGING_STATION_Y: "6"
+
+x-rover-service: &rover-service
+  build:
+    context: .
+    dockerfile: Dockerfile
+  command: ["python", "-m", "app.vehicles.rover"]
+  depends_on:
+    - control-center
+  volumes:
+    - .:/app
+
 services:
   control-center:
     build:
@@ -20,18 +39,35 @@ services:
     command: ["python", "-m", "app.vehicles.drone"]
     depends_on:
       - control-center
+    environment:
+      <<: *ra-charging-env
+      VEHICLE_ID: drone-1
+      RPC_HOST: vehicle-drone
+      RPC_PORT: "50051"
+      POSITION_X: "5"
+      POSITION_Y: "14"
     volumes:
       - .:/app
 
-  vehicle-rover:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    command: ["python", "-m", "app.vehicles.rover"]
-    depends_on:
-      - control-center
-    volumes:
-      - .:/app
+  vehicle-rover-1:
+    <<: *rover-service
+    environment:
+      <<: *ra-charging-env
+      VEHICLE_ID: rover-1
+      RPC_HOST: vehicle-rover-1
+      RPC_PORT: "50052"
+      POSITION_X: "9"
+      POSITION_Y: "6"
+
+  vehicle-rover-2:
+    <<: *rover-service
+    environment:
+      <<: *ra-charging-env
+      VEHICLE_ID: rover-2
+      RPC_HOST: vehicle-rover-2
+      RPC_PORT: "50052"
+      POSITION_X: "10"
+      POSITION_Y: "6"
 
   vehicle-boat:
     build:

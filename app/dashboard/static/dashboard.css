@@ -386,6 +386,113 @@ tr:last-child td {
     font-weight: 600;
 }
 
+/* ===========================================================
+   Aufgabe 4
+   Charging Coordination
+   =========================================================== */
+
+   .charging-overview {
+
+    display: grid;
+
+    grid-template-columns: 1fr;
+
+    gap: 8px;
+
+    margin-bottom: 14px;
+
+}
+
+.charging-row {
+
+    display: flex;
+
+    justify-content: space-between;
+
+    align-items: center;
+
+    padding: 6px 10px;
+
+    border: 1px solid var(--border);
+
+    border-radius: 6px;
+
+    background: #fafbfc;
+
+}
+
+.charging-row strong {
+
+    color: var(--muted);
+
+    font-size: 13px;
+
+}
+
+#charging-holder {
+
+    font-weight: 600;
+
+    color: #155e58;
+
+}
+
+#charging-safety {
+
+    font-weight: 700;
+
+}
+
+#charging-body td {
+
+    vertical-align: middle;
+
+}
+
+#charging-body tr:hover {
+
+    background: #f7fafb;
+
+}
+
+#charging-body td:nth-child(3) {
+
+    font-weight: 600;
+
+}
+
+#charging-body td:nth-child(4) {
+
+    font-family: monospace;
+
+}
+
+#charging-body td:nth-child(5) {
+
+    font-weight: 600;
+
+}
+
+#charging-body td:nth-child(5)::after {
+
+    content: "";
+
+}
+
+.safety-ok {
+
+    color: #1f7a3d;
+
+}
+
+.safety-warning {
+
+    color: #b00020;
+
+    font-weight: 700;
+
+}
+
 @media (max-width: 960px) {
     .topbar {
         height: auto;
