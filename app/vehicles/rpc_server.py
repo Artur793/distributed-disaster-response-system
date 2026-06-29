@@ -12,6 +12,7 @@ from app.common.mqtt_publisher import (
     message_envelope,
     publish_json,
 )
+from app.vehicles.charging_coordinator import VehicleChargingCoordinator
 
 
 class BaseVehicle(mission_pb2_grpc.VehicleServiceServicer):
@@ -29,6 +30,9 @@ class BaseVehicle(mission_pb2_grpc.VehicleServiceServicer):
         self.telemetry_topic = f"island/telemetry/{self.vehicle_id}"
         self.status_topic = f"island/status/{self.vehicle_id}"
         self.mqtt_client = None
+        self.charging_coordinator = (
+            VehicleChargingCoordinator.from_environment(self.vehicle_id)
+        )
 
     
     def AssignMission(self, request, context): # implement the assignmission of rpc
