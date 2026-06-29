@@ -82,7 +82,7 @@ class VehicleChargingCoordinator:
         self.own_request_id: str | None = None
         self.own_request_priority: tuple[int, str] | None = None
         self.waiting_for: set[str] = set()
-        self.deferred_replies: set[str] = set()
+        self.deferred_replies: dict[str, str] = {}
         self.seen_message_ids: set[str] = set()
         self.seen_request_ids: set[str] = set()
         self.last_timeout_warning_at = 0.0
@@ -185,7 +185,7 @@ class VehicleChargingCoordinator:
                     and own_has_priority
                 )
             ):
-                self.deferred_replies.add(sender_id)
+                self.deferred_replies[sender_id] = request_id
                 return RequestDecision.DEFER
 
             return RequestDecision.REPLY
@@ -223,6 +223,53 @@ class VehicleChargingCoordinator:
                 return True
 
             return False
+
+    def is_held(self) -> bool:
+        with self._lock:
+            return self.ra_state == ChargingRAState.HELD
+
+    def charge_one_tick(self) -> int:
+        with self._lock:
+            self.battery_percent = min(
+                100,
+                (
+                    self.battery_percent
+                    + self.config.charging_rate_percent_per_second
+                ),
+            )
+            return self.battery_percent
+
+    def is_fully_charged(self) -> bool:
+        with self._lock:
+            return self.battery_percent >= 100
+
+    def finish_charging(self) -> list[tuple[str, str]]:
+        with self._lock:
+            deferred = sorted(self.deferred_replies.items())
+            self.ra_state = ChargingRAState.RELEASED
+            self.own_request_id = None
+            self.own_request_priority = None
+            self.waiting_for.clear()
+            self.deferred_replies.clear()
+            self.last_timeout_warning_at = 0.0
+            return deferred
+
+    def should_log_timeout_warning(self, now: float) -> bool:
+        with self._lock:
+            if (
+                self.ra_state != ChargingRAState.WANTED
+                or not self.waiting_for
+            ):
+                return False
+
+            if (
+                now - self.last_timeout_warning_at
+                < self.config.reply_timeout_seconds
+            ):
+                return False
+
+            self.last_timeout_warning_at = now
+            return True
 
     def next_lamport(self) -> int:
         with self._lock:

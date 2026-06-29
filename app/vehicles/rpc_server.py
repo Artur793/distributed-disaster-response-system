@@ -41,6 +41,7 @@ class BaseVehicle(mission_pb2_grpc.VehicleServiceServicer):
         self.charging_status_topic = "island/coordination/charging/status"
         self.mqtt_client = None
         self._charging_status_thread_started = False
+        self._charging_thread_started = False
         self.charging_coordinator = (
             VehicleChargingCoordinator.from_environment(self.vehicle_id)
         )
@@ -202,6 +203,14 @@ class BaseVehicle(mission_pb2_grpc.VehicleServiceServicer):
             payload,
             qos=0,
         )
+        self.maybe_request_charging()
+
+    def maybe_request_charging(self) -> None:
+        if self.state != mission_pb2.IDLE:
+            return
+
+        if self.charging_coordinator.needs_charging():
+            self.request_charging_access()
 
     def start_charging_status_publisher(self) -> None:
         if (
@@ -221,6 +230,13 @@ class BaseVehicle(mission_pb2_grpc.VehicleServiceServicer):
         while True:
             time.sleep(1)
             snapshot = self.charging_coordinator.snapshot()
+            if self.charging_coordinator.should_log_timeout_warning(
+                time.time()
+            ):
+                print(
+                    f"[{self.vehicle_id}] still waiting for RA REPLYs: "
+                    f"{snapshot.waiting_for}"
+                )
             if snapshot.needs_periodic_status:
                 self.publish_charging_status(snapshot)
 
@@ -283,6 +299,7 @@ class BaseVehicle(mission_pb2_grpc.VehicleServiceServicer):
             f"{request.request_id}"
         )
         self.publish_charging_status()
+        self.start_charging_if_held()
 
     def handle_charging_request(self, payload: dict) -> None:
         required_fields = {
@@ -385,8 +402,63 @@ class BaseVehicle(mission_pb2_grpc.VehicleServiceServicer):
             print(
                 f"[{self.vehicle_id}] entered RA HELD for charging"
             )
+            self.start_charging_if_held()
 
         self.publish_charging_status()
+
+    def start_charging_if_held(self) -> None:
+        if (
+            self._charging_thread_started
+            or not self.charging_coordinator.is_held()
+        ):
+            return
+
+        self._charging_thread_started = True
+        thread = threading.Thread(
+            target=self._charging_loop,
+            daemon=True,
+        )
+        thread.start()
+
+    def _charging_loop(self) -> None:
+        print(f"[{self.vehicle_id}] starting charging simulation")
+        self.state = mission_pb2.CHARGING
+        self.progress = 0
+        self.result_message = "Charging"
+        self.publish_telemetry()
+        self.publish_charging_status()
+
+        try:
+            while not self.charging_coordinator.is_fully_charged():
+                time.sleep(1)
+                battery_percent = (
+                    self.charging_coordinator.charge_one_tick()
+                )
+                print(
+                    f"[{self.vehicle_id}] charging battery "
+                    f"{battery_percent}%"
+                )
+                self.publish_charging_status()
+
+            deferred_replies = (
+                self.charging_coordinator.finish_charging()
+            )
+            self.state = mission_pb2.IDLE
+            self.progress = 0
+            self.result_message = ""
+            self.publish_telemetry()
+
+            for target_vehicle_id, request_id in deferred_replies:
+                self.send_charging_reply(
+                    target_vehicle_id=target_vehicle_id,
+                    request_id=request_id,
+                )
+
+            print(f"[{self.vehicle_id}] finished charging")
+            self.publish_charging_status()
+
+        finally:
+            self._charging_thread_started = False
 
     def travel_to_mission(self) -> None:
         self.state = mission_pb2.BUSY
