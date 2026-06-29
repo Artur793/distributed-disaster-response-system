@@ -24,15 +24,15 @@ Die Position `(9, 6)` existiert bereits als `CHARGING_STATION` in der aktuellen 
 
 ## Teilnehmer
 
-Wir verwenden die aktuell vorhandenen drei Fahrzeuge:
+Wir verwenden drei registrierte Fahrzeuge:
 
 ```text
 drone-1
 rover-1
-drone-2 or rover-2
+rover-2
 ```
 
-Alle drei Fahrzeuge implementieren dieselbe Ricart/Agrawala-Logik. Es werden keine neuen Fahrzeugtypen nur fuer Aufgabe 4 benoetigt.
+Alle drei Fahrzeuge implementieren dieselbe Ricart/Agrawala-Logik. `rover-2` verwendet denselben Fahrzeugtyp wie `rover-1`, laeuft aber als eigener Container mit eigener Fahrzeug-ID.
 
 ## Kommunikationsweg
 
@@ -180,7 +180,7 @@ Gemeinsame Felder:
   "vehicle_state": "BUSY",
   "ra_state": "WANTED",
   "lamport": 12,
-  "waiting_for": ["rover-1", "boat-1"],
+  "waiting_for": ["rover-1", "rover-2"],
   "deferred_replies": [],
   "battery_percent": 14,
   "sent_at": "2026-06-23T10:15:01Z"

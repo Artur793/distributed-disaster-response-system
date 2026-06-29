@@ -1,3 +1,13 @@
+x-rover-service: &rover-service
+  build:
+    context: .
+    dockerfile: Dockerfile
+  command: ["python", "-m", "app.vehicles.rover"]
+  depends_on:
+    - control-center
+  volumes:
+    - .:/app
+
 services:
   control-center:
     build:
@@ -23,15 +33,23 @@ services:
     volumes:
       - .:/app
 
-  vehicle-rover:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    command: ["python", "-m", "app.vehicles.rover"]
-    depends_on:
-      - control-center
-    volumes:
-      - .:/app
+  vehicle-rover-1:
+    <<: *rover-service
+    environment:
+      VEHICLE_ID: rover-1
+      RPC_HOST: vehicle-rover-1
+      RPC_PORT: "50052"
+      POSITION_X: "9"
+      POSITION_Y: "6"
+
+  vehicle-rover-2:
+    <<: *rover-service
+    environment:
+      VEHICLE_ID: rover-2
+      RPC_HOST: vehicle-rover-2
+      RPC_PORT: "50052"
+      POSITION_X: "10"
+      POSITION_Y: "6"
 
   vehicle-boat:
     build:

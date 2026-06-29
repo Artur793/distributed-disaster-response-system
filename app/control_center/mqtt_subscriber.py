@@ -19,6 +19,8 @@ class MQTTSubscriber:
     STARTUP_RETRY_SECONDS = 5
     MAX_MESSAGE_AGE_SECONDS = 60
     INCIDENT_DUPLICATE_WINDOW_SECONDS = 30
+    CHARGING_STATUS_TOPIC = "island/coordination/charging/status"
+    CHARGING_RESOURCE_ID = "charging-station-1-slot-1"
 
     def __init__(self, state: SystemState):
         self.state = state
@@ -75,7 +77,7 @@ class MQTTSubscriber:
         client.subscribe("island/events/#", qos=1)
         client.subscribe("island/telemetry/#", qos=0)
         client.subscribe("island/status/#", qos=1)
-        client.subscribe("island/coordination/charging/status",qos=1,)
+        client.subscribe(self.CHARGING_STATUS_TOPIC, qos=1)
 
     def on_disconnect(
         self,
@@ -110,11 +112,11 @@ class MQTTSubscriber:
         elif topic.startswith("island/telemetry"):
             self._handle_telemetry(payload)
 
+        elif topic == self.CHARGING_STATUS_TOPIC:
+            self._handle_charging_status(payload)
+
         elif topic.startswith("island/status"):
             self._handle_status(payload)
-        
-        elif topic.startswith("island/coordination/charging/status"):
-            self._handle_charging_status(payload)
 
     def _validate_message(self, payload: dict, topic: str) -> bool:
         message_id = payload.get("message_id")
@@ -126,10 +128,15 @@ class MQTTSubscriber:
             print(f"Duplicate message ignored: {message_id}")
             return False
 
-        timestamp_string = payload.get("timestamp")
+        timestamp_string = (
+            payload.get("sent_at")
+            if topic == self.CHARGING_STATUS_TOPIC
+            else payload.get("timestamp")
+        )
         should_check_message_age = not topic.startswith("island/status")
 
         if should_check_message_age and not timestamp_string:
+            print(f"Message timestamp missing: {message_id}")
             return False
 
         if timestamp_string and should_check_message_age:
@@ -267,81 +274,76 @@ class MQTTSubscriber:
 
         except Exception as e:
             print(f"Status processing failed: {e}")
-    
+
     def _handle_charging_status(
-    self,
-    payload: dict,):
-
+        self,
+        payload: dict,
+    ):
         try:
-
             required_fields = [
-
+                "resource_id",
                 "vehicle_id",
-
                 "vehicle_state",
-
                 "ra_state",
-
                 "lamport",
-
                 "battery_percent",
-
             ]
 
             for field in required_fields:
-
                 if field not in payload:
-
                     print(
                         f"Charging status missing field: {field}"
                     )
-
                     return
 
-            self.state.update_charging_status(payload)
+            if payload["resource_id"] != self.CHARGING_RESOURCE_ID:
+                print(
+                    "Charging status rejected for wrong resource: "
+                    f"{payload['resource_id']}"
+                )
+                return
 
+            vehicle_id = payload["vehicle_id"]
+
+            if self.state.get_vehicle(vehicle_id) is None:
+                print(
+                    "Charging status ignored for unknown vehicle: "
+                    f"{vehicle_id}"
+                )
+                return
+
+            self.state.update_charging_status(payload)
             charging = self.state.get_charging_status()
 
             print(
                 f"[Charging] "
-                f"{payload['vehicle_id']} "
+                f"{vehicle_id} "
                 f"{payload['ra_state']} "
                 f"(Lamport {payload['lamport']})"
             )
 
             if charging["safety_violation"]:
-
                 print()
-
                 print(
                     "===================================="
                 )
-
                 print(
                     "SAFETY VIOLATION DETECTED"
                 )
-
                 print(
                     "Multiple vehicles entered HELD."
                 )
-
                 print(
                     f"Current holder(s): "
                     f"{charging['current_holder']}"
                 )
-
                 print(
                     "===================================="
                 )
-
                 print()
 
         except Exception as error:
-
             print(
-
                 f"Charging status processing failed: "
-
                 f"{error}"
-
             )
