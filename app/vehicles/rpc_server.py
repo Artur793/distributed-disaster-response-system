@@ -1,10 +1,14 @@
 import json
 import threading
 import time
+from collections import deque
 from concurrent import futures
 
 import grpc
 
+from app.common.map import InfrastructureType, IslandMap, MapCell, TileType
+from app.common.mapgenerator import generate_default_map
+from app.common.models import Position
 from app.rpc.generated import mission_pb2
 from app.rpc.generated import mission_pb2_grpc
 from app.common.mqtt_publisher import (
@@ -15,6 +19,7 @@ from app.common.mqtt_publisher import (
     utc_timestamp,
 )
 from app.vehicles.charging_coordinator import (
+    ChargingRAState,
     RequestDecision,
     VehicleChargingCoordinator,
 )
@@ -60,6 +65,15 @@ class BaseVehicle(mission_pb2_grpc.VehicleServiceServicer):
                 vehicle_id=self.vehicle_id,
                 accepted=False,
                 message="Vehicle is not idle",
+            )
+
+        charging_snapshot = self.charging_coordinator.snapshot()
+        if charging_snapshot.ra_state != ChargingRAState.RELEASED:
+            return mission_pb2.MissionAck(
+                mission_id=request.mission_id,
+                vehicle_id=self.vehicle_id,
+                accepted=False,
+                message="Vehicle is coordinating charging",
             )
 
         if not self.is_compatible(request):
@@ -279,6 +293,11 @@ class BaseVehicle(mission_pb2_grpc.VehicleServiceServicer):
         if request is None:
             return
 
+        self.state = mission_pb2.BUSY
+        self.progress = 0
+        self.result_message = "Waiting for charging slot"
+        self.publish_telemetry()
+
         payload = {
             "message_id": self.message_ids.next(self.vehicle_id),
             "type": "REQUEST",
@@ -460,6 +479,7 @@ class BaseVehicle(mission_pb2_grpc.VehicleServiceServicer):
         self.publish_telemetry()
         self.publish_charging_status()
 
+        deferred_replies = []
         try:
             self.travel_to_charging_station()
 
@@ -497,6 +517,25 @@ class BaseVehicle(mission_pb2_grpc.VehicleServiceServicer):
             print(f"[{self.vehicle_id}] finished charging")
             self.publish_charging_status()
 
+        except Exception as exc:
+            print(
+                f"[{self.vehicle_id}] charging failed: {exc}"
+            )
+            deferred_replies = (
+                self.charging_coordinator.finish_charging()
+            )
+            self.state = mission_pb2.ERROR
+            self.progress = 0
+            self.result_message = str(exc)
+            self.publish_telemetry()
+            self.publish_charging_status()
+
+            for target_vehicle_id, request_id in deferred_replies:
+                self.send_charging_reply(
+                    target_vehicle_id=target_vehicle_id,
+                    request_id=request_id,
+                )
+
         finally:
             self._charging_thread_started = False
 
@@ -507,22 +546,114 @@ class BaseVehicle(mission_pb2_grpc.VehicleServiceServicer):
             .charging_station_position
         )
 
-        while self.position != target:
+        route = self.calculate_route_to_position(target)
+        if route is None:
+            raise RuntimeError("No valid route to charging station")
+
+        for next_position in route:
             time.sleep(1)
-            if self.position["x"] < target["x"]:
-                self.position["x"] += 1
-            elif self.position["x"] > target["x"]:
-                self.position["x"] -= 1
-            elif self.position["y"] < target["y"]:
-                self.position["y"] += 1
-            elif self.position["y"] > target["y"]:
-                self.position["y"] -= 1
+            self.position = {
+                "x": next_position.x,
+                "y": next_position.y,
+            }
 
             print(
                 f"[{self.vehicle_id}] moving to charging station "
                 f"({self.position['x']}, {self.position['y']})"
             )
             self.publish_telemetry()
+
+    def calculate_route_to_position(
+        self,
+        target: dict,
+    ) -> list[Position] | None:
+        island_map = generate_default_map()
+        return self._shortest_route(
+            island_map,
+            Position(x=self.position["x"], y=self.position["y"]),
+            Position(x=target["x"], y=target["y"]),
+        )
+
+    def _shortest_route(
+        self,
+        island_map: IslandMap,
+        start: Position,
+        target: Position,
+    ) -> list[Position] | None:
+        start_coordinates = (start.x, start.y)
+        target_coordinates = (target.x, target.y)
+        if not self._inside_map(island_map, start_coordinates):
+            return None
+        if not self._inside_map(island_map, target_coordinates):
+            return None
+
+        start_cell = island_map.cells[start.y][start.x]
+        target_cell = island_map.cells[target.y][target.x]
+        if not self._can_traverse_charging_route(start_cell):
+            return None
+        if not self._can_traverse_charging_route(target_cell):
+            return None
+
+        parents: dict[tuple[int, int], tuple[int, int] | None] = {
+            start_coordinates: None,
+        }
+        queue = deque([start_coordinates])
+        directions = ((0, -1), (0, 1), (1, 0), (-1, 0))
+
+        while queue:
+            current = queue.popleft()
+            if current == target_coordinates:
+                break
+
+            for x_offset, y_offset in directions:
+                next_coordinates = (
+                    current[0] + x_offset,
+                    current[1] + y_offset,
+                )
+                if next_coordinates in parents:
+                    continue
+                if not self._inside_map(island_map, next_coordinates):
+                    continue
+
+                next_cell = island_map.cells[
+                    next_coordinates[1]
+                ][next_coordinates[0]]
+                if not self._can_traverse_charging_route(next_cell):
+                    continue
+
+                parents[next_coordinates] = current
+                queue.append(next_coordinates)
+
+        if target_coordinates not in parents:
+            return None
+
+        route = []
+        cursor = target_coordinates
+        while cursor != start_coordinates:
+            route.append(Position(x=cursor[0], y=cursor[1]))
+            cursor = parents[cursor]
+        route.reverse()
+        return route
+
+    @staticmethod
+    def _inside_map(
+        island_map: IslandMap,
+        coordinates: tuple[int, int],
+    ) -> bool:
+        x, y = coordinates
+        return 0 <= x < island_map.width and 0 <= y < island_map.height
+
+    def _can_traverse_charging_route(self, cell: MapCell) -> bool:
+        if self.vehicle_type == "drone":
+            return True
+        if self.vehicle_type == "boat":
+            return cell.tile_type == TileType.WATER
+        if self.vehicle_type == "rover":
+            return (
+                cell.tile_type == TileType.LAND
+                or cell.infrastructure == InfrastructureType.BRIDGE
+            )
+        return False
 
     def travel_to_mission(self) -> None:
         self.state = mission_pb2.BUSY
