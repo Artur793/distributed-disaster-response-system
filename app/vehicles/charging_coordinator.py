@@ -21,6 +21,8 @@ class VehicleChargingConfig:
     battery_low_threshold: int = 20
     charging_rate_percent_per_second: int = 10
     reply_timeout_seconds: int = 10
+    charging_station_x: int = 9
+    charging_station_y: int = 6
 
     @property
     def enabled(self) -> bool:
@@ -33,6 +35,13 @@ class VehicleChargingConfig:
             for participant in self.participants
             if participant != self.vehicle_id
         ]
+
+    @property
+    def charging_station_position(self) -> dict:
+        return {
+            "x": self.charging_station_x,
+            "y": self.charging_station_y,
+        }
 
 
 @dataclass
@@ -106,6 +115,8 @@ class VehicleChargingCoordinator:
                 "RA_REPLY_TIMEOUT_SECONDS",
                 10,
             ),
+            charging_station_x=_int_env("CHARGING_STATION_X", 9),
+            charging_station_y=_int_env("CHARGING_STATION_Y", 6),
         )
         return cls(config)
 
@@ -148,6 +159,21 @@ class VehicleChargingCoordinator:
             return ChargingRequest(
                 request_id=self.own_request_id,
                 lamport=self.lamport,
+                battery_percent=self.battery_percent,
+            )
+
+    def current_request(self) -> ChargingRequest | None:
+        with self._lock:
+            if (
+                self.ra_state != ChargingRAState.WANTED
+                or self.own_request_id is None
+                or self.own_request_priority is None
+            ):
+                return None
+
+            return ChargingRequest(
+                request_id=self.own_request_id,
+                lamport=self.own_request_priority[0],
                 battery_percent=self.battery_percent,
             )
 

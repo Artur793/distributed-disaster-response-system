@@ -55,6 +55,23 @@ def test_receive_request_replies_when_released_and_ignores_duplicate():
     assert duplicate_decision == RequestDecision.IGNORE
 
 
+def test_current_request_keeps_original_lamport_while_wanted():
+    charging = coordinator("drone-1")
+    original = charging.start_request()
+    charging.receive_request(
+        message_id="rover-1-msg-1",
+        request_id="rover-1-2",
+        sender_id="rover-1",
+        lamport=2,
+    )
+
+    retry = charging.current_request()
+
+    assert retry is not None
+    assert retry.request_id == original.request_id
+    assert retry.lamport == original.lamport
+
+
 def test_receive_request_defers_when_own_request_has_priority():
     charging = coordinator("drone-1")
     charging.start_request()

@@ -239,6 +239,8 @@ class BaseVehicle(mission_pb2_grpc.VehicleServiceServicer):
                 )
             if snapshot.needs_periodic_status:
                 self.publish_charging_status(snapshot)
+            if snapshot.ra_state == "WANTED":
+                self.republish_charging_request()
 
     def publish_charging_status(self, snapshot=None) -> None:
         if (
@@ -300,6 +302,36 @@ class BaseVehicle(mission_pb2_grpc.VehicleServiceServicer):
         )
         self.publish_charging_status()
         self.start_charging_if_held()
+
+    def republish_charging_request(self) -> None:
+        if self.mqtt_client is None:
+            return
+
+        request = self.charging_coordinator.current_request()
+        if request is None:
+            return
+
+        payload = {
+            "message_id": self.message_ids.next(self.vehicle_id),
+            "type": "REQUEST",
+            "resource_id": self.charging_coordinator.config.resource_id,
+            "sender_id": self.vehicle_id,
+            "lamport": request.lamport,
+            "request_id": request.request_id,
+            "battery_percent": request.battery_percent,
+            "reason": "LOW_BATTERY",
+            "sent_at": utc_timestamp(),
+        }
+        publish_json(
+            self.mqtt_client,
+            self.charging_request_topic,
+            payload,
+            qos=1,
+        )
+        print(
+            f"[{self.vehicle_id}] republished RA REQUEST "
+            f"{request.request_id}"
+        )
 
     def handle_charging_request(self, payload: dict) -> None:
         required_fields = {
@@ -421,14 +453,22 @@ class BaseVehicle(mission_pb2_grpc.VehicleServiceServicer):
         thread.start()
 
     def _charging_loop(self) -> None:
-        print(f"[{self.vehicle_id}] starting charging simulation")
-        self.state = mission_pb2.CHARGING
+        print(f"[{self.vehicle_id}] travelling to charging station")
+        self.state = mission_pb2.BUSY
         self.progress = 0
-        self.result_message = "Charging"
+        self.result_message = "Travelling to charging station"
         self.publish_telemetry()
         self.publish_charging_status()
 
         try:
+            self.travel_to_charging_station()
+
+            print(f"[{self.vehicle_id}] starting charging simulation")
+            self.state = mission_pb2.CHARGING
+            self.result_message = "Charging"
+            self.publish_telemetry()
+            self.publish_charging_status()
+
             while not self.charging_coordinator.is_fully_charged():
                 time.sleep(1)
                 battery_percent = (
@@ -459,6 +499,30 @@ class BaseVehicle(mission_pb2_grpc.VehicleServiceServicer):
 
         finally:
             self._charging_thread_started = False
+
+    def travel_to_charging_station(self) -> None:
+        target = (
+            self.charging_coordinator
+            .config
+            .charging_station_position
+        )
+
+        while self.position != target:
+            time.sleep(1)
+            if self.position["x"] < target["x"]:
+                self.position["x"] += 1
+            elif self.position["x"] > target["x"]:
+                self.position["x"] -= 1
+            elif self.position["y"] < target["y"]:
+                self.position["y"] += 1
+            elif self.position["y"] > target["y"]:
+                self.position["y"] -= 1
+
+            print(
+                f"[{self.vehicle_id}] moving to charging station "
+                f"({self.position['x']}, {self.position['y']})"
+            )
+            self.publish_telemetry()
 
     def travel_to_mission(self) -> None:
         self.state = mission_pb2.BUSY
