@@ -34,13 +34,13 @@ pytest -v
 
 # Test Summary
 
-  | Test Category                | Test Count   | Passed   | Failed
-  ----------------------------| ------------ |-------- |--------
-  Charging Coordinator Tests  |            7  |      7  |      0
-  RPC Vehicle Tests           |            4  |      4   |     0
-  Charging Performance Tests   |           2  |      2   |     0
-  Charging Latency Tests      |            2  |      2   |     0
-  **TOTAL**                   |       **15**  | **15**  |  **0**
+  Test Category                  Test Count   Passed   Failed
+  ---------------------------- ------------ -------- --------
+  Charging Coordinator Tests              7        7        0
+  RPC Vehicle Tests                       4        4        0
+  Charging Performance Tests              2        2        0
+  Charging Latency Tests                  2        2        0
+  **TOTAL**                          **15**   **15**    **0**
 
 ------------------------------------------------------------------------
 
@@ -156,19 +156,39 @@ tests/test_ra_charging_latency.py
 
 ## Objective
 
-Measure latency of the Ricart/Agrawala coordination workflow.
+Measure the latency of the Ricart/Agrawala charging coordination
+workflow using both the real vehicle implementation and the coordinator
+implementation.
 
 ### Test 1
 
-**Test:** `test_request_to_held_latency`
+**Test:** `test_vehicle_request_to_held_latency`
+
+**Objective**
+
+Measure the latency of the complete vehicle-side charging request
+workflow, starting from the vehicle requesting access to the charging
+station until it successfully enters the HELD state.
+
+The test executes the real implementation of:
+
+-   `request_charging_access()`
+-   `VehicleChargingCoordinator.start_request()`
+-   MQTT request payload creation
+-   `handle_charging_reply()`
+-   `VehicleChargingCoordinator.receive_reply()`
+-   Transition to `HELD`
+
+Only the external MQTT communication is mocked while the application
+logic is executed unchanged.
 
 Measured Result
 
 ``` text
 Iterations : 500
-Average    : 0.0014 ms
-Minimum    : 0.0013 ms
-Maximum    : 0.0066 ms
+Average    : 0.0047 ms
+Minimum    : 0.0043 ms
+Maximum    : 0.0286 ms
 ```
 
 Result: PASS
@@ -176,6 +196,12 @@ Result: PASS
 ### Test 2
 
 **Test:** `test_finish_charging_latency`
+
+**Objective**
+
+Measure the latency required to release the charging station after
+charging has completed. This includes the transition from HELD to
+RELEASED and preparation of deferred replies.
 
 Measured Result
 
@@ -189,12 +215,12 @@ Result: PASS
 
 # Performance Summary
 
-  | Metric                      | Measured | Value | Result
-  --------------------------| ----------------| --------|------
-  |REQUEST → HELD latency    |        0.0014| ms |PASS
-  Charging release latency   |       0.0003 |ms |PASS
-  Charging state update      |       0.0011 |ms |PASS
-  Status retrieval          |        0.0052| ms |PASS
+  Metric                             Measured Value Result
+  -------------------------------- ---------------- --------
+  Vehicle request → HELD latency      **0.0047 ms** PASS
+  Charging release latency            **0.0003 ms** PASS
+  Charging state update               **0.0011 ms** PASS
+  Status retrieval                    **0.0052 ms** PASS
 
 ------------------------------------------------------------------------
 
@@ -202,15 +228,22 @@ Result: PASS
 
 The functional tests verify the correctness of the Ricart/Agrawala
 charging coordination algorithm, including request handling, reply
-processing, deferred replies, and charging state transitions.
+processing, deferred replies, duplicate message handling, and charging
+state transitions.
 
 The updated RPC vehicle tests confirm that charging coordination
 integrates correctly with the existing mission assignment behaviour.
 
-The non-functional tests demonstrate excellent performance. Both
-charging state updates and status retrieval execute within a few
-microseconds, while the REQUEST-to-HELD transition and charging release
-latency remain well below one millisecond.
+The non-functional tests demonstrate that both the coordinator and the
+complete vehicle charging workflow execute efficiently. The integration
+latency test measures the real execution path from
+`request_charging_access()` through REQUEST creation, REPLY processing,
+and the transition to the HELD state. The measured average latency of
+**0.0047 ms** shows that the complete charging coordination workflow
+executes within a few microseconds. Charging state updates, status
+retrieval, and charging release operations also complete within
+microseconds, confirming that the decentralized Ricart/Agrawala
+implementation introduces negligible overhead.
 
 No failures occurred during execution.
 
