@@ -86,25 +86,7 @@ def create_vehicle():
 
 
 def test_vehicle_request_to_held_latency(monkeypatch):
-    """
-    Measures the latency of the real vehicle charging workflow.
-
-    Flow:
-
-        request_charging_access()
-            ↓
-        VehicleChargingCoordinator.start_request()
-            ↓
-        MQTT REQUEST creation
-            ↓
-        handle_charging_reply()
-            ↓
-        VehicleChargingCoordinator.receive_reply()
-            ↓
-        HELD
-
-    Only external infrastructure is mocked.
-    """
+    
 
     iterations = 500
     durations = []
