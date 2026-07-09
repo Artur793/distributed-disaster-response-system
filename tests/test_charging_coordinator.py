@@ -145,3 +145,20 @@ def test_finish_charging_releases_and_returns_deferred_replies():
     assert snapshot.ra_state == ChargingRAState.RELEASED
     assert snapshot.waiting_for == []
     assert snapshot.deferred_replies == []
+
+
+def test_drain_battery_for_incident_uses_configured_amount_and_clamps():
+    charging = VehicleChargingCoordinator(
+        VehicleChargingConfig(
+            vehicle_id="drone-1",
+            participants=["drone-1"],
+            battery_initial_percent=50,
+            battery_drain_percent_per_incident=30,
+        )
+    )
+
+    first_percent = charging.drain_battery_for_incident()
+    second_percent = charging.drain_battery_for_incident()
+
+    assert first_percent == 20
+    assert second_percent == 0

@@ -19,6 +19,7 @@ class VehicleChargingConfig:
     resource_id: str = RESOURCE_ID
     battery_initial_percent: int = 100
     battery_low_threshold: int = 20
+    battery_drain_percent_per_incident: int = 30
     charging_rate_percent_per_second: int = 10
     reply_timeout_seconds: int = 10
     charging_station_x: int = 9
@@ -107,6 +108,10 @@ class VehicleChargingCoordinator:
                 100,
             ),
             battery_low_threshold=_int_env("BATTERY_LOW_THRESHOLD", 20),
+            battery_drain_percent_per_incident=_int_env(
+                "BATTERY_DRAIN_PERCENT_PER_INCIDENT",
+                30,
+            ),
             charging_rate_percent_per_second=_int_env(
                 "CHARGING_RATE_PERCENT_PER_SECOND",
                 10,
@@ -261,6 +266,20 @@ class VehicleChargingCoordinator:
                 (
                     self.battery_percent
                     + self.config.charging_rate_percent_per_second
+                ),
+            )
+            return self.battery_percent
+
+    def drain_battery_for_incident(self) -> int:
+        with self._lock:
+            if not self.enabled:
+                return self.battery_percent
+
+            self.battery_percent = max(
+                0,
+                (
+                    self.battery_percent
+                    - self.config.battery_drain_percent_per_incident
                 ),
             )
             return self.battery_percent
