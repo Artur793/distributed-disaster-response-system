@@ -14,6 +14,10 @@ CONTROL_CENTER_ADDRESS = ("control-center", 8080)
 REGISTRATION_RETRY_SECONDS = 3
 SENSOR_ID = "camera-1"
 MQTT_TOPIC = f"island/events/camera/{SENSOR_ID}"
+SENSOR_POSITION = {
+    "x": 10,
+    "y": 12,
+}
 
 
 def send_request(request: str) -> str:
@@ -51,10 +55,7 @@ payload = {
     "id": SENSOR_ID,
     "unit": "sensor",
     "sensor_type": "camera",
-    "position": {
-        "x": 10,
-        "y": 12
-    }
+    "position": SENSOR_POSITION
 }
 
 body = json.dumps(payload)
@@ -89,10 +90,7 @@ while True:
             "incident_type": "person_detected",
             "source_id": SENSOR_ID,
             "message": f"Person Detected with High-Probability: {person_confidence}",
-            "position": {
-                "x": 6,
-                "y": 10
-            },
+            "position": SENSOR_POSITION,
             "priority": 1,
             "status": "open"
         }

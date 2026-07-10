@@ -248,4 +248,12 @@ class SystemState:
 
     def get_charging_status(self) -> dict:
 
-        return self.charging_coordination.get_status()
+        with self._lock:
+            status = self.charging_coordination.get_status()
+
+            for participant in status["participants"]:
+                vehicle = self.vehicles.get(participant["vehicle_id"])
+                if vehicle is not None:
+                    participant["vehicle_state"] = vehicle.status
+
+            return status

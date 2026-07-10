@@ -75,7 +75,7 @@ def generate_default_map() -> IslandMap:
             elif (x, y) == (10, 10): # depot in the center
                 infrastructure = InfrastructureType.DEPOT
 
-            elif (x, y) in [(15, 15) , (9 , 6)]:  # chargin station , bottom right corner
+            elif (x, y) in [(9 , 6)]:  # charging station , bottom right corner
                 infrastructure = InfrastructureType.CHARGING_STATION
 
             elif (x, y) == (5, 14):   # landing field 

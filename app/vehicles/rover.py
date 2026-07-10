@@ -103,6 +103,7 @@ class RoverVehicle(BaseVehicle):
                 )
 
             self.state = mission_pb2.COMPLETED
+            self.drain_battery_for_incident()
 
             if self.current_mission.incident_type == "person_detected":
                 self.result_message = "Land rescue mission completed"
