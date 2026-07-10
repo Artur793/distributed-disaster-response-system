@@ -14,6 +14,10 @@ CONTROL_CENTER_ADDRESS = ("control-center", 8080)
 REGISTRATION_RETRY_SECONDS = 3
 SENSOR_ID = "water-1"
 MQTT_TOPIC = f"island/events/sensor/{SENSOR_ID}"
+SENSOR_POSITION = {
+    "x": 1,
+    "y": 2,
+}
 
 
 def send_request(request: str) -> str:
@@ -51,10 +55,7 @@ payload = {
     "id": SENSOR_ID,
     "unit": "sensor",
     "sensor_type": "water",
-    "position": {
-        "x": 1,
-        "y": 2
-    }
+    "position": SENSOR_POSITION
 }
 
 body = json.dumps(payload)
@@ -89,10 +90,7 @@ while True:
             "incident_type": "water_level_alert",
             "source_id": SENSOR_ID,
             "message": f"Critical water level detected: {water_level_cm}",
-            "position": {
-                "x": 1,
-                "y": 2
-            },
+            "position": SENSOR_POSITION,
             "priority": 2,
             "status": "open"
         }
