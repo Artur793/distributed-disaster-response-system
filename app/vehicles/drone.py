@@ -84,6 +84,7 @@ class DroneVehicle(BaseVehicle):
                 )
 
             self.state = mission_pb2.COMPLETED
+            self.drain_battery_for_incident()
 
             self.result_message = (
                 "Water level alert inspection completed"

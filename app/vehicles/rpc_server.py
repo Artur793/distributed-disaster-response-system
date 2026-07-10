@@ -226,6 +226,19 @@ class BaseVehicle(mission_pb2_grpc.VehicleServiceServicer):
         if self.charging_coordinator.needs_charging():
             self.request_charging_access()
 
+    def drain_battery_for_incident(self) -> None:
+        if not self.charging_coordinator.enabled:
+            return
+
+        battery_percent = (
+            self.charging_coordinator.drain_battery_for_incident()
+        )
+        print(
+            f"[{self.vehicle_id}] battery drained to "
+            f"{battery_percent}% after incident"
+        )
+        self.publish_charging_status()
+
     def start_charging_status_publisher(self) -> None:
         if (
             self._charging_status_thread_started

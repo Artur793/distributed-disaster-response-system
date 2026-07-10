@@ -14,6 +14,10 @@ CONTROL_CENTER_ADDRESS = ("control-center", 8080)
 REGISTRATION_RETRY_SECONDS = 3
 SENSOR_ID = "vibration-1"
 MQTT_TOPIC = f"island/events/sensor/{SENSOR_ID}"
+SENSOR_POSITION = {
+    "x": 15,
+    "y": 18,
+}
 
 
 def send_request(request: str) -> str:
@@ -51,10 +55,7 @@ payload = {
     "id": SENSOR_ID,
     "unit": "sensor",
     "sensor_type": "vibration",
-    "position": {
-        "x": 15,
-        "y": 18
-    }
+    "position": SENSOR_POSITION
 }
 
 body = json.dumps(payload)
@@ -89,10 +90,7 @@ while True:
             "incident_type": "vibration_alert",
             "source_id": SENSOR_ID,
             "message": f"High Vibration Detected: {vibration_index}",
-            "position": {
-                "x": 15,
-                "y": 18
-            },
+            "position": SENSOR_POSITION,
             "priority": 2,
             "status": "open"
         }
